@@ -70,15 +70,10 @@ jobs:
       - name: Ensure remote directory
         run: |
           ssh -i ~/.ssh/paraba-site maxfoot@167.233.239.13 \
-            'mkdir -p /opt/paraba-site/dist && sudo chown -R maxfoot:maxfoot /opt/paraba-site'
+            'mkdir -p /opt/paraba-site/dist'
 
       - name: Upload build
         run: |
           rsync -az --delete \
             -e 'ssh -i ~/.ssh/paraba-site -o StrictHostKeyChecking=yes' \
             dist/ maxfoot@167.233.239.13:/opt/paraba-site/dist/
-
-      - name: Reload Nginx
-        run: |
-          ssh -i ~/.ssh/paraba-site maxfoot@167.233.239.13 \
-            'sudo nginx -t && sudo systemctl reload nginx'
