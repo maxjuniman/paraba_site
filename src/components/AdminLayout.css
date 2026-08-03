@@ -1,0 +1,136 @@
+.admin-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  background:
+    radial-gradient(circle at top left, rgba(34, 160, 107, 0.08), transparent 40%),
+    linear-gradient(180deg, #f8f9fc 0%, #eef1f6 100%);
+}
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 18px;
+  background: #0f1419;
+  color: #f5f7fa;
+  border-right: 1px solid #2d3745;
+}
+
+.admin-brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-brand img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.admin-brand strong {
+  display: block;
+  font-size: 16px;
+}
+
+.admin-brand span {
+  color: #98a2b3;
+  font-size: 13px;
+}
+
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.admin-nav a {
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #98a2b3;
+  font-weight: 700;
+}
+
+.admin-nav a:hover,
+.admin-nav a.active {
+  background: #1a222d;
+  color: #fff;
+}
+
+.admin-user {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #2d3745;
+}
+
+.admin-user strong {
+  display: block;
+}
+
+.admin-user .muted {
+  color: #98a2b3;
+  font-size: 13px;
+}
+
+.admin-user .btn-ghost {
+  color: #f97066;
+  justify-content: flex-start;
+  padding-left: 0;
+}
+
+.admin-main {
+  padding: 28px;
+  overflow: auto;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.admin-header p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .admin-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    flex: initial;
+  }
+
+  .admin-nav a {
+    white-space: nowrap;
+  }
+
+  .admin-user {
+    display: none;
+  }
+}

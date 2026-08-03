@@ -1,0 +1,61 @@
+export function onlyDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+export function formatPhone(value: string): string {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+export function normalizePhoneDigits(value?: string | null): string {
+  let digits = onlyDigits(String(value ?? ''));
+  if (digits.startsWith('55') && digits.length >= 12) digits = digits.slice(2);
+  return digits;
+}
+
+export function isValidBrazilMobile(value?: string | null): boolean {
+  const digits = normalizePhoneDigits(value);
+  return digits.length === 10 || digits.length === 11;
+}
+
+export function normalizePhoneWithBrazilCode(value: string): string {
+  const digits = onlyDigits(value);
+  if (!digits) return '';
+  if (digits.startsWith('55')) return digits;
+  return `55${digits}`;
+}
+
+export function formatDate(value: string): string {
+  const digits = onlyDigits(value).slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+export function brDateToIso(value: string): string | null {
+  const digits = onlyDigits(value);
+  if (digits.length !== 8) return null;
+  const day = Number(digits.slice(0, 2));
+  const month = Number(digits.slice(2, 4));
+  const year = Number(digits.slice(4, 8));
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${year.toString().padStart(4, '0')}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
+}
+
+export function isoToBrDate(value?: string | null): string {
+  if (!value) return '';
+  const dateOnly = value.trim().slice(0, 10);
+  const [year, month, day] = dateOnly.split('-');
+  if (!year || !month || !day || year.length !== 4) return value;
+  return `${day}/${month}/${year}`;
+}
+
+export function todayIso(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}

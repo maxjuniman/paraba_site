@@ -1,0 +1,40 @@
+import axios, { isAxiosError } from 'axios';
+import { getAccessToken } from './session';
+
+const DEFAULT_API_URL = 'https://apiparaba.maxfoot.com.br';
+
+function normalizeApiUrl(url: string): string {
+  const normalizedUrl = url.replace(/\/+$/, '');
+  return normalizedUrl.endsWith('/api') ? normalizedUrl : `${normalizedUrl}/api`;
+}
+
+export const API_BASE_URL = normalizeApiUrl(import.meta.env.VITE_PARABA_API_URL || DEFAULT_API_URL);
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+api.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export function apiErrorMessage(error: unknown, fallback = 'Nao foi possivel concluir a operacao.'): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as { message?: string; error?: string } | undefined;
+    return data?.message || data?.error || error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
+export function unwrapData<T>(payload: { data?: T } | T): T {
+  if (payload && typeof payload === 'object' && 'data' in payload && payload.data !== undefined) {
+    return payload.data as T;
+  }
+  return payload as T;
+}
