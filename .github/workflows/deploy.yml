@@ -37,10 +37,34 @@ jobs:
           npm run build
 
       - name: Configure SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/paraba-site
+          chmod 700 ~/.ssh
+
+          if [ -z "${VPS_SSH_KEY:-}" ]; then
+            echo "Secret VPS_SSH_KEY nao configurado."
+            exit 1
+          fi
+
+          # Grava via env (melhor que interpolar no YAML)
+          printenv VPS_SSH_KEY | tr -d '\r' > ~/.ssh/paraba-site
           chmod 600 ~/.ssh/paraba-site
+
+          if ! grep -q "BEGIN .*PRIVATE KEY" ~/.ssh/paraba-site; then
+            echo "VPS_SSH_KEY parece nao ser uma chave PRIVADA."
+            echo "Cole o arquivo completo com BEGIN/END PRIVATE KEY (nao use a .pub)."
+            exit 1
+          fi
+
+          if ! ssh-keygen -y -f ~/.ssh/paraba-site >/dev/null; then
+            echo "VPS_SSH_KEY invalida (error in libcrypto)."
+            echo "Gere um novo par e cadastre de novo no GitHub (veja README)."
+            exit 1
+          fi
+
           ssh-keyscan -H 167.233.239.13 >> ~/.ssh/known_hosts
 
       - name: Ensure remote directory
