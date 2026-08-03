@@ -3,9 +3,11 @@ import { apiErrorMessage } from '@/lib/api';
 import { formatPhone, normalizePhoneWithBrazilCode } from '@/lib/formatters';
 import { useAuth } from '@/lib/AuthContext';
 import { parabaService } from '@/lib/parabaService';
+import { isProfessor } from '@/lib/session';
 
 export function AdminConfiguracoesPage() {
   const { user, setUser, logout } = useAuth();
+  const professor = isProfessor(user);
   const [nome, setNome] = useState(user?.nome ?? '');
   const [celular, setCelular] = useState(user?.celular ? formatPhone(user.celular) : '');
   const [senhaAtual, setSenhaAtual] = useState('');
@@ -81,7 +83,7 @@ export function AdminConfiguracoesPage() {
       <header className="admin-header">
         <div>
           <h1>Configurações</h1>
-          <p>Perfil do professor e criação de novas contas.</p>
+          <p>{professor ? 'Perfil do professor e criação de novas contas.' : 'Edite seu cadastro e senha.'}</p>
         </div>
         <button type="button" className="btn btn-ghost" onClick={logout}>
           Sair
@@ -140,49 +142,51 @@ export function AdminConfiguracoesPage() {
         </button>
       </form>
 
-      <form className="card stack" onSubmit={saveProfessor}>
-        <h2 style={{ margin: 0 }}>Criar conta de professor</h2>
-        <input
-          className="input"
-          placeholder="Nome"
-          value={prof.nome}
-          onChange={(e) => setProf((p) => ({ ...p, nome: e.target.value }))}
-          required
-        />
-        <input
-          className="input"
-          type="email"
-          placeholder="E-mail"
-          value={prof.email}
-          onChange={(e) => setProf((p) => ({ ...p, email: e.target.value }))}
-          required
-        />
-        <input
-          className="input"
-          placeholder="Celular (opcional)"
-          value={prof.celular}
-          onChange={(e) => setProf((p) => ({ ...p, celular: formatPhone(e.target.value) }))}
-        />
-        <input
-          className="input"
-          type="password"
-          placeholder="Senha"
-          value={prof.senha}
-          onChange={(e) => setProf((p) => ({ ...p, senha: e.target.value }))}
-          required
-        />
-        <input
-          className="input"
-          type="password"
-          placeholder="Confirmar senha"
-          value={prof.confirmacao_senha}
-          onChange={(e) => setProf((p) => ({ ...p, confirmacao_senha: e.target.value }))}
-          required
-        />
-        <button className="btn btn-primary" type="submit" disabled={savingProf}>
-          {savingProf ? 'Criando...' : 'Criar conta'}
-        </button>
-      </form>
+      {professor ? (
+        <form className="card stack" onSubmit={saveProfessor}>
+          <h2 style={{ margin: 0 }}>Criar conta de professor</h2>
+          <input
+            className="input"
+            placeholder="Nome"
+            value={prof.nome}
+            onChange={(e) => setProf((p) => ({ ...p, nome: e.target.value }))}
+            required
+          />
+          <input
+            className="input"
+            type="email"
+            placeholder="E-mail"
+            value={prof.email}
+            onChange={(e) => setProf((p) => ({ ...p, email: e.target.value }))}
+            required
+          />
+          <input
+            className="input"
+            placeholder="Celular (opcional)"
+            value={prof.celular}
+            onChange={(e) => setProf((p) => ({ ...p, celular: formatPhone(e.target.value) }))}
+          />
+          <input
+            className="input"
+            type="password"
+            placeholder="Senha"
+            value={prof.senha}
+            onChange={(e) => setProf((p) => ({ ...p, senha: e.target.value }))}
+            required
+          />
+          <input
+            className="input"
+            type="password"
+            placeholder="Confirmar senha"
+            value={prof.confirmacao_senha}
+            onChange={(e) => setProf((p) => ({ ...p, confirmacao_senha: e.target.value }))}
+            required
+          />
+          <button className="btn btn-primary" type="submit" disabled={savingProf}>
+            {savingProf ? 'Criando...' : 'Criar conta'}
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }

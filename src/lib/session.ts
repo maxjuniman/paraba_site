@@ -34,3 +34,11 @@ export function clearSession(): void {
 export function isProfessor(user?: SessionUser | null): boolean {
   return user?.tipo === 1 || user?.tipo === 'admin' || user?.tipo === 'professor';
 }
+
+export function isAluno(user?: SessionUser | null): boolean {
+  return user?.tipo === 2 || user?.tipo === 'aluno';
+}
+
+export function canAccessAdmin(user?: SessionUser | null): boolean {
+  return isProfessor(user) || isAluno(user);
+}

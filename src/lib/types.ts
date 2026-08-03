@@ -117,3 +117,19 @@ export type DepoimentoAdmin = {
   ordem: number;
   createdAt?: string;
 };
+
+export type EquipeAluno = Pick<
+  Aluno,
+  'id' | 'nome' | 'apelido' | 'foto' | 'dataNascimento' | 'faixaAtual' | 'graus'
+> & {
+  isMe?: boolean;
+  dataPagamento?: string | null;
+  pagamentoPago?: boolean | null;
+  pagamentoReferencia?: string | null;
+  pagamentosPagos?: string[] | null;
+  createdAt?: string;
+  cadastroAppAt?: string | null;
+};
+
+export type MeuAluno = EquipeAluno &
+  Pick<Aluno, 'dataPagamento' | 'pagamentoPago' | 'pagamentoReferencia' | 'pagamentosPagos' | 'createdAt' | 'cadastroAppAt'>;

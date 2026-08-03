@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import {
+  canAccessAdmin,
   clearSession,
   getAccessToken,
   getCurrentUser,
-  isProfessor,
   saveSession,
   updateCurrentUser,
 } from './session';
@@ -30,9 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, senha: string) => {
     const payload = await parabaService.login(email.trim().toLowerCase(), senha);
-    if (!isProfessor(payload.user)) {
+    if (!canAccessAdmin(payload.user)) {
       clearSession();
-      throw new Error('Acesso restrito a professores.');
+      throw new Error('Acesso restrito a professores e alunos.');
     }
     saveSession(payload);
     setToken(payload.accessToken);
@@ -40,9 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const acceptSession = useCallback((payload: { accessToken: string; user: SessionUser }) => {
-    if (!isProfessor(payload.user)) {
+    if (!canAccessAdmin(payload.user)) {
       clearSession();
-      throw new Error('Acesso restrito a professores.');
+      throw new Error('Acesso restrito a professores e alunos.');
     }
     saveSession(payload);
     setToken(payload.accessToken);

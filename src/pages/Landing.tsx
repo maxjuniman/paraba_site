@@ -139,6 +139,104 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
   );
 }
 
+function initialFromName(nome: string): string {
+  const trimmed = nome.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
+}
+
+function TestimonialsSlider({ items }: { items: PublicDepoimento[] }) {
+  const [index, setIndex] = useState(0);
+  const total = items.length;
+  const current = items[index] ?? items[0];
+
+  useEffect(() => {
+    setIndex(0);
+  }, [items.length]);
+
+  useEffect(() => {
+    if (total < 2) return;
+    const id = window.setInterval(() => {
+      setIndex((prev) => (prev + 1) % total);
+    }, 7000);
+    return () => window.clearInterval(id);
+  }, [total]);
+
+  if (!current) return null;
+
+  const goPrev = () => setIndex((prev) => (prev - 1 + total) % total);
+  const goNext = () => setIndex((prev) => (prev + 1) % total);
+
+  return (
+    <div className="mx-auto flex w-full max-w-[720px] flex-col items-center text-center">
+      <span
+        className="font-display text-[clamp(72px,14vw,120px)] leading-none text-[#a33c2a] select-none"
+        aria-hidden="true"
+      >
+        ”
+      </span>
+
+      <blockquote className="m-0 mt-2">
+        <p
+          key={current.id}
+          className="m-0 text-[clamp(18px,2.6vw,26px)] leading-relaxed font-medium text-white animate-[hero-fade-up_0.45s_ease]"
+        >
+          “{current.texto}”
+        </p>
+      </blockquote>
+
+      <div className="mt-10 flex h-14 w-14 items-center justify-center rounded-full bg-[#2a2f36] text-xl font-extrabold text-white">
+        {initialFromName(current.nome)}
+      </div>
+      <cite className="mt-4 text-sm font-extrabold tracking-[0.14em] text-white uppercase not-italic">
+        {current.nome}
+      </cite>
+      {current.faixa ? (
+        <span className="mt-2 text-[11px] font-semibold tracking-[0.18em] text-[#8b919a] uppercase">
+          {current.faixa}
+        </span>
+      ) : null}
+
+      {total > 1 ? (
+        <div className="mt-12 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={goPrev}
+            className="inline-flex h-11 w-11 items-center justify-center border border-white/25 text-white transition hover:border-white/50 hover:bg-white/5"
+            aria-label="Depoimento anterior"
+          >
+            ‹
+          </button>
+
+          <div className="flex items-center gap-2" role="tablist" aria-label="Depoimentos">
+            {items.map((item, i) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={i === index}
+                aria-label={`Depoimento ${i + 1}`}
+                onClick={() => setIndex(i)}
+                className={`h-0.5 transition-all ${
+                  i === index ? 'w-8 bg-white' : 'w-5 bg-white/30 hover:bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={goNext}
+            className="inline-flex h-11 w-11 items-center justify-center border border-white/25 text-white transition hover:border-white/50 hover:bg-white/5"
+            aria-label="Próximo depoimento"
+          >
+            ›
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function LandingPage() {
   const [alunos, setAlunos] = useState<PublicAluno[]>([]);
   const [depoimentos, setDepoimentos] = useState<PublicDepoimento[]>([]);
@@ -216,22 +314,10 @@ export function LandingPage() {
               </a>
             ))}
             <a
-              href={INSTAGRAM_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-bold tracking-wide text-cream/80 transition hover:text-cream"
+              href="/admin/login"
+              className="inline-flex min-h-10 items-center rounded-[10px] border border-cream/35 px-4 text-sm font-extrabold text-cream transition hover:bg-cream/10"
             >
-              <IconInstagram className="h-4 w-4" />
-              Instagram
-            </a>
-            <a
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-10 items-center gap-2 rounded-[10px] bg-accent px-4 text-sm font-extrabold text-[#fff7f0] transition hover:bg-accent-hover"
-            >
-              <IconWhatsApp className="h-4 w-4" />
-              WhatsApp
+              Admin
             </a>
           </nav>
 
@@ -281,11 +367,18 @@ export function LandingPage() {
                 href={WHATSAPP_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] bg-accent px-4 text-sm font-extrabold text-[#fff7f0]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-4 text-sm font-extrabold text-[#062410]"
                 onClick={() => setMenuOpen(false)}
               >
                 <IconWhatsApp className="h-4 w-4" />
                 WhatsApp
+              </a>
+              <a
+                href="/admin/login"
+                className="inline-flex min-h-11 items-center justify-center rounded-[10px] border border-cream/35 px-4 text-sm font-extrabold text-cream"
+                onClick={() => setMenuOpen(false)}
+              >
+                Admin
               </a>
             </nav>
           </div>
@@ -303,7 +396,7 @@ export function LandingPage() {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-accent px-[22px] font-extrabold text-[#fff7f0] transition hover:-translate-y-px hover:bg-accent-hover"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-[22px] font-extrabold text-[#062410] transition hover:-translate-y-px hover:bg-[#2fe075]"
               href={WHATSAPP_URL}
               target="_blank"
               rel="noreferrer"
@@ -346,35 +439,15 @@ export function LandingPage() {
         )}
       </section>
 
-      <section
-        className="bg-linear-to-b from-[#ebe6dc] via-paper to-paper py-22"
-        id="depoimentos"
-        aria-label="Depoimentos"
-      >
+      <section className="bg-[#111418] py-22 text-cream" id="depoimentos" aria-label="Depoimentos">
         <div className="mx-auto w-[min(1120px,calc(100%-40px))]">
-          <p className="mb-2.5 text-xs font-bold tracking-[0.22em] text-muted uppercase">Depoimentos</p>
-          <h2 className="m-0 font-display text-[clamp(36px,6vw,56px)] leading-[0.95] tracking-[0.03em]">
-            Quem treina, recomenda.
-          </h2>
+          <p className="mb-10 text-center text-xs font-bold tracking-[0.28em] text-[#8b919a] uppercase">
+            Depoimentos
+          </p>
           {depoimentos.length === 0 ? (
-            <p className="mt-6 text-muted">Os depoimentos da equipe aparecem aqui em breve.</p>
+            <p className="text-center text-[#8b919a]">Os depoimentos da equipe aparecem aqui em breve.</p>
           ) : (
-            <div className="mt-9 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
-              {depoimentos.map((item) => (
-                <blockquote
-                  key={item.id}
-                  className="m-0 border-t-[3px] border-accent bg-linear-to-br from-white/70 to-white/35 px-6 py-7"
-                >
-                  <p className="m-0 text-[17px] leading-relaxed text-ink">“{item.texto}”</p>
-                  <footer className="mt-[22px] flex flex-col gap-1">
-                    <cite className="text-[15px] font-extrabold not-italic">{item.nome}</cite>
-                    {item.faixa ? (
-                      <span className="text-xs tracking-[0.08em] text-muted uppercase">{item.faixa}</span>
-                    ) : null}
-                  </footer>
-                </blockquote>
-              ))}
-            </div>
+            <TestimonialsSlider items={depoimentos} />
           )}
         </div>
       </section>

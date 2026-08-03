@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiErrorMessage } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 import { parabaService } from '@/lib/parabaService';
+import { isProfessor } from '@/lib/session';
 import type { AulaCalendarioMes, AulaCategoria, AulaRecorrencia, TipoAula } from '@/lib/types';
 
 const WEEK_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -16,6 +18,8 @@ function currentMonth(): string {
 }
 
 export function AdminCalendarioPage() {
+  const { user } = useAuth();
+  const professor = isProfessor(user);
   const [mes, setMes] = useState(currentMonth());
   const [aulas, setAulas] = useState<AulaCalendarioMes[]>([]);
   const [tipos, setTipos] = useState<TipoAula[]>([]);
@@ -38,7 +42,7 @@ export function AdminCalendarioPage() {
       setLoading(true);
       const [calendar, tiposAula] = await Promise.all([
         parabaService.listarCalendarioMes(mes),
-        parabaService.listarTiposAula(),
+        professor ? parabaService.listarTiposAula() : Promise.resolve([] as TipoAula[]),
       ]);
       setAulas(calendar.aulas ?? []);
       setTipos(tiposAula);
@@ -51,7 +55,7 @@ export function AdminCalendarioPage() {
 
   useEffect(() => {
     void load();
-  }, [mes]);
+  }, [mes, professor]);
 
   const sorted = useMemo(
     () => [...aulas].sort((a, b) => a.data.localeCompare(b.data) || a.hora.localeCompare(b.hora)),
@@ -121,11 +125,13 @@ export function AdminCalendarioPage() {
       <header className="admin-header">
         <div>
           <h1>Calendário</h1>
-          <p>Aulas do mês e cadastro de treinos.</p>
+          <p>{professor ? 'Aulas do mês e cadastro de treinos.' : 'Aulas do mês — visualização.'}</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Fechar formulário' : 'Nova aula'}
-        </button>
+        {professor ? (
+          <button type="button" className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Fechar formulário' : 'Nova aula'}
+          </button>
+        ) : null}
       </header>
 
       {error ? <div className="error-box">{error}</div> : null}
@@ -137,7 +143,7 @@ export function AdminCalendarioPage() {
         <input className="input" style={{ maxWidth: 220 }} type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
       </div>
 
-      {showForm ? (
+      {professor && showForm ? (
         <form className="card stack" onSubmit={onSubmit}>
           <h2 style={{ margin: 0 }}>Nova aula</h2>
           <div>
@@ -240,7 +246,7 @@ export function AdminCalendarioPage() {
                 <th>Hora</th>
                 <th>Tipo</th>
                 <th>Categorias</th>
-                <th>Presentes</th>
+                {professor ? <th>Presentes</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -250,7 +256,7 @@ export function AdminCalendarioPage() {
                   <td>{aula.hora}</td>
                   <td>{aula.tipoAulaNome}</td>
                   <td>{aula.categorias?.join(', ') || 'Todas'}</td>
-                  <td>{aula.totalPresentes ?? 0}</td>
+                  {professor ? <td>{aula.totalPresentes ?? 0}</td> : null}
                 </tr>
               ))}
             </tbody>

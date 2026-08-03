@@ -6,6 +6,8 @@ import type {
   AuthPayload,
   CalendarioMes,
   DepoimentoAdmin,
+  EquipeAluno,
+  MeuAluno,
   PendingUser,
   PresencaDia,
   PresencaDiaAluno,
@@ -136,6 +138,21 @@ export const parabaService = {
     return unwrapData(data);
   },
 
+  async listarEquipe(): Promise<EquipeAluno[]> {
+    const { data } = await api.get<{ data?: EquipeAluno[] } | EquipeAluno[]>('/equipe');
+    return Array.isArray(data) ? data : data.data ?? [];
+  },
+
+  async obterMeuAluno(): Promise<MeuAluno> {
+    const { data } = await api.get<{ data?: MeuAluno } | MeuAluno>('/equipe/me');
+    return unwrapData<MeuAluno>(data);
+  },
+
+  async atualizarMinhaFotoEquipe(foto: string | null): Promise<EquipeAluno> {
+    const { data } = await api.patch<{ data?: EquipeAluno } | EquipeAluno>('/equipe/me/foto', { foto });
+    return unwrapData<EquipeAluno>(data);
+  },
+
   async obterMeuDepoimento(): Promise<DepoimentoAdmin | null> {
     const { data } = await api.get<{ data?: DepoimentoAdmin | null }>('/depoimentos/me');
     return data?.data ?? null;
@@ -175,7 +192,10 @@ export const parabaService = {
   },
 
   async desativarDepoimento(id: string): Promise<DepoimentoAdmin> {
-    const { data } = await api.delete<{ data?: DepoimentoAdmin } | DepoimentoAdmin>(`/depoimentos/${id}`);
-    return unwrapData<DepoimentoAdmin>(data);
+    return this.atualizarDepoimento(id, { ativo: false });
+  },
+
+  async excluirDepoimento(id: string): Promise<void> {
+    await api.delete(`/depoimentos/${id}`);
   },
 };

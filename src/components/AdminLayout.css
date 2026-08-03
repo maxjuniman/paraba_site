@@ -62,27 +62,110 @@
   color: #fff;
 }
 
-.admin-user {
+.admin-content {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid #2d3745;
 }
 
-.admin-user strong {
+.admin-topbar {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  min-height: 64px;
+  padding: 10px 20px;
+  background: #0f1419;
+  border-bottom: 1px solid #2d3745;
+  color: #f5f7fa;
+}
+
+.admin-topbar-spacer {
+  flex: 1;
+}
+
+.admin-user-menu {
+  position: relative;
+}
+
+.admin-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1.5px solid #3a4554;
+  border-radius: 999px;
+  background: #1a222d;
+  cursor: pointer;
+}
+
+.admin-user-trigger:hover {
+  border-color: #667085;
+}
+
+.admin-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.admin-user-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: min(280px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid #2d3745;
+  border-radius: 14px;
+  background: #0f1419;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.admin-user-meta {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2d3745;
+}
+
+.admin-user-meta strong {
   display: block;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
 }
 
-.admin-user .muted {
+.admin-user-meta span {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
   color: #98a2b3;
   font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.admin-user .btn-ghost {
-  color: #f97066;
-  justify-content: flex-start;
-  padding-left: 0;
+.admin-logout {
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: #ff7f61;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+}
+
+.admin-logout:hover {
+  opacity: 0.85;
 }
 
 .admin-main {
@@ -130,7 +213,8 @@
     white-space: nowrap;
   }
 
-  .admin-user {
-    display: none;
+  .admin-topbar {
+    top: 0;
+    z-index: 19;
   }
 }
