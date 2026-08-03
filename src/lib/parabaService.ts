@@ -5,6 +5,7 @@ import type {
   AulaCalendarioBody,
   AuthPayload,
   CalendarioMes,
+  DepoimentoAdmin,
   PendingUser,
   PresencaDia,
   PresencaDiaAluno,
@@ -133,5 +134,48 @@ export const parabaService = {
   async cadastrarAulaCalendario(body: AulaCalendarioBody) {
     const { data } = await api.post('/calendario/aulas', body);
     return unwrapData(data);
+  },
+
+  async obterMeuDepoimento(): Promise<DepoimentoAdmin | null> {
+    const { data } = await api.get<{ data?: DepoimentoAdmin | null }>('/depoimentos/me');
+    return data?.data ?? null;
+  },
+
+  async salvarMeuDepoimento(texto: string): Promise<DepoimentoAdmin> {
+    const { data } = await api.put<{ data?: DepoimentoAdmin } | DepoimentoAdmin>('/depoimentos/me', {
+      texto,
+    });
+    return unwrapData<DepoimentoAdmin>(data);
+  },
+
+  async listarDepoimentos(): Promise<DepoimentoAdmin[]> {
+    const { data } = await api.get<{ data?: DepoimentoAdmin[] } | DepoimentoAdmin[]>('/depoimentos');
+    return Array.isArray(data) ? data : data.data ?? [];
+  },
+
+  async criarDepoimento(body: {
+    nome?: string;
+    texto: string;
+    faixa?: string | null;
+    ativo?: boolean;
+  }): Promise<DepoimentoAdmin> {
+    const { data } = await api.post<{ data?: DepoimentoAdmin } | DepoimentoAdmin>('/depoimentos', body);
+    return unwrapData<DepoimentoAdmin>(data);
+  },
+
+  async atualizarDepoimento(
+    id: string,
+    body: Partial<{ nome: string; texto: string; faixa: string | null; ativo: boolean; ordem: number }>
+  ): Promise<DepoimentoAdmin> {
+    const { data } = await api.patch<{ data?: DepoimentoAdmin } | DepoimentoAdmin>(
+      `/depoimentos/${id}`,
+      body
+    );
+    return unwrapData<DepoimentoAdmin>(data);
+  },
+
+  async desativarDepoimento(id: string): Promise<DepoimentoAdmin> {
+    const { data } = await api.delete<{ data?: DepoimentoAdmin } | DepoimentoAdmin>(`/depoimentos/${id}`);
+    return unwrapData<DepoimentoAdmin>(data);
   },
 };

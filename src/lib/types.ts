@@ -106,3 +106,14 @@ export type AulaCalendarioBody = {
   hora: string;
   categorias: AulaCategoria[];
 };
+
+export type DepoimentoAdmin = {
+  id: string;
+  nome: string;
+  texto: string;
+  faixa?: string | null;
+  userId?: string | null;
+  ativo: boolean;
+  ordem: number;
+  createdAt?: string;
+};

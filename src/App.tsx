@@ -7,6 +7,7 @@ import { AdminAlunosPage } from '@/pages/admin/Alunos';
 import { AdminAutorizacoesPage } from '@/pages/admin/Autorizacoes';
 import { AdminCalendarioPage } from '@/pages/admin/Calendario';
 import { AdminConfiguracoesPage } from '@/pages/admin/Configuracoes';
+import { AdminDepoimentosPage } from '@/pages/admin/Depoimentos';
 import { AdminHomePage } from '@/pages/admin/Home';
 import { AdminLoginPage } from '@/pages/admin/Login';
 import { AdminPagamentosPage } from '@/pages/admin/Pagamentos';
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="presencas" element={<AdminPresencasPage />} />
               <Route path="pagamentos" element={<AdminPagamentosPage />} />
               <Route path="calendario" element={<AdminCalendarioPage />} />
+              <Route path="depoimentos" element={<AdminDepoimentosPage />} />
               <Route path="configuracoes" element={<AdminConfiguracoesPage />} />
             </Route>
           </Route>

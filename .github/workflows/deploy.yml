@@ -1,0 +1,60 @@
+name: Deploy Site
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: paraba-site-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install and build
+        env:
+          VITE_PARABA_API_URL: ${{ secrets.VITE_PARABA_API_URL }}
+        run: |
+          if [ -z "${VITE_PARABA_API_URL}" ]; then
+            echo "Secret VITE_PARABA_API_URL nao configurado."
+            exit 1
+          fi
+          npm ci
+          npm run build
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/paraba-site
+          chmod 600 ~/.ssh/paraba-site
+          ssh-keyscan -H 167.233.239.13 >> ~/.ssh/known_hosts
+
+      - name: Ensure remote directory
+        run: |
+          ssh -i ~/.ssh/paraba-site maxfoot@167.233.239.13 \
+            'mkdir -p /opt/paraba-site/dist && sudo chown -R maxfoot:maxfoot /opt/paraba-site'
+
+      - name: Upload build
+        run: |
+          rsync -az --delete \
+            -e 'ssh -i ~/.ssh/paraba-site -o StrictHostKeyChecking=yes' \
+            dist/ maxfoot@167.233.239.13:/opt/paraba-site/dist/
+
+      - name: Reload Nginx
+        run: |
+          ssh -i ~/.ssh/paraba-site maxfoot@167.233.239.13 \
+            'sudo nginx -t && sudo systemctl reload nginx'

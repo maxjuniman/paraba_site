@@ -10,6 +10,7 @@ const links = [
   { to: '/admin/presencas', label: 'Presenças' },
   { to: '/admin/pagamentos', label: 'Pagamentos' },
   { to: '/admin/calendario', label: 'Calendário' },
+  { to: '/admin/depoimentos', label: 'Depoimentos' },
   { to: '/admin/configuracoes', label: 'Configurações' },
 ];
 

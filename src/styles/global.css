@@ -1,3 +1,66 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Bebas Neue', 'DM Sans', sans-serif;
+
+  --color-ink: #101418;
+  --color-paper: #f3f1ec;
+  --color-sand: #e7e2d8;
+  --color-accent: #c45c26;
+  --color-accent-hover: #d4682d;
+  --color-muted: #5f646c;
+  --color-cream: #f7f4ef;
+  --color-hero-lead: #c8c3bb;
+
+  --color-admin-bg: #f6f7fb;
+  --color-admin-card: #ffffff;
+  --color-admin-primary: #000000;
+  --color-admin-secondary: #22a06b;
+  --color-admin-danger: #d92d20;
+  --color-admin-text: #172033;
+  --color-admin-muted: #667085;
+  --color-admin-border: #d0d5dd;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--color-admin-bg);
+    color: var(--color-admin-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  img {
+    max-width: 100%;
+    display: block;
+  }
+
+  button {
+    cursor: pointer;
+  }
+}
+
+/* Admin shared primitives (painel /admin) */
 :root {
   --bg: #f6f7fb;
   --card: #ffffff;
@@ -14,47 +77,6 @@
   --radius: 16px;
   --font: 'DM Sans', system-ui, sans-serif;
   --display: 'Bebas Neue', 'DM Sans', sans-serif;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  min-height: 100%;
-}
-
-body {
-  margin: 0;
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-img {
-  max-width: 100%;
-  display: block;
-}
-
-button {
-  cursor: pointer;
 }
 
 .page {
@@ -207,4 +229,56 @@ table.data th {
   text-align: center;
   color: var(--text-muted);
   padding: 28px 12px;
+}
+
+/* Landing motion (keyframes) */
+@keyframes fighters-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fighters-scroll {
+  animation: fighters-scroll var(--marquee-duration, 60s) linear infinite;
+  will-change: transform;
+}
+
+.landing-ready .hero-enter {
+  animation: hero-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-ready .hero-enter-delay {
+  animation: hero-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+.landing-ready .hero-mark-enter {
+  animation: hero-fade-up 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fighters-scroll {
+    animation: none;
+  }
+
+  .landing-ready .hero-enter,
+  .landing-ready .hero-enter-delay,
+  .landing-ready .hero-mark-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
