@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 
 const PORTFOLIO_URL = 'https://max-juniman.vercel.app/';
@@ -113,7 +113,8 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
           src={aluno.foto || '/sem-foto.png'}
           alt={displayNick(aluno)}
           loading="lazy"
-          className="h-full w-full object-cover grayscale contrast-110 transition-[filter] duration-300 group-hover:grayscale-0"
+          draggable={false}
+          className="pointer-events-none h-full w-full object-cover grayscale contrast-110 transition-[filter] duration-300 group-hover:grayscale-0"
         />
         <div
           className="absolute right-[-4px] bottom-3 left-[-4px] flex h-3 overflow-hidden border-[1.5px] border-black bg-black"
@@ -136,6 +137,130 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
         {faixa} ({graus})
       </p>
     </article>
+  );
+}
+
+function FightersMarquee({ alunos }: { alunos: PublicAluno[] }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+  const resumeTimerRef = useRef<number | null>(null);
+  const dragRef = useRef<{ active: boolean; startX: number; scrollLeft: number }>({
+    active: false,
+    startX: 0,
+    scrollLeft: 0,
+  });
+
+  const loopItems = useMemo(() => {
+    if (alunos.length === 0) return [];
+    // Duplica o suficiente para o loop infinito parecer contínuo.
+    return [...alunos, ...alunos];
+  }, [alunos]);
+
+  const pause = () => {
+    pausedRef.current = true;
+    if (resumeTimerRef.current != null) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+  };
+
+  const scheduleResume = () => {
+    if (resumeTimerRef.current != null) window.clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = window.setTimeout(() => {
+      pausedRef.current = false;
+      resumeTimerRef.current = null;
+    }, 2200);
+  };
+
+  const wrapScroll = (el: HTMLDivElement) => {
+    const half = el.scrollWidth / 2;
+    if (half <= 0) return;
+    if (el.scrollLeft >= half) el.scrollLeft -= half;
+    if (el.scrollLeft < 0) el.scrollLeft += half;
+  };
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || alunos.length === 0) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
+
+    let raf = 0;
+    const speed = 0.45;
+
+    const tick = () => {
+      if (!pausedRef.current && !dragRef.current.active) {
+        el.scrollLeft += speed;
+        wrapScroll(el);
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      if (resumeTimerRef.current != null) window.clearTimeout(resumeTimerRef.current);
+    };
+  }, [alunos.length]);
+
+  return (
+    <div className="fighters-marquee overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]">
+      <div
+        ref={scrollerRef}
+        className="fighters-scroller flex gap-[18px] overflow-x-auto overflow-y-hidden overscroll-x-contain pl-[18px] sm:gap-7 sm:pl-7"
+        onPointerDown={(event) => {
+          if (event.pointerType === 'touch') {
+            pause();
+            return;
+          }
+          const el = scrollerRef.current;
+          if (!el) return;
+          pause();
+          dragRef.current = { active: true, startX: event.clientX, scrollLeft: el.scrollLeft };
+          el.setPointerCapture(event.pointerId);
+          el.classList.add('is-dragging');
+        }}
+        onPointerMove={(event) => {
+          if (!dragRef.current.active) return;
+          const el = scrollerRef.current;
+          if (!el) return;
+          el.scrollLeft = dragRef.current.scrollLeft - (event.clientX - dragRef.current.startX);
+          wrapScroll(el);
+        }}
+        onPointerUp={(event) => {
+          if (dragRef.current.active) {
+            dragRef.current.active = false;
+            const el = scrollerRef.current;
+            el?.classList.remove('is-dragging');
+            try {
+              el?.releasePointerCapture(event.pointerId);
+            } catch {
+              // ignore
+            }
+          }
+          scheduleResume();
+        }}
+        onPointerCancel={() => {
+          dragRef.current.active = false;
+          scrollerRef.current?.classList.remove('is-dragging');
+          scheduleResume();
+        }}
+        onTouchStart={pause}
+        onTouchEnd={scheduleResume}
+        onWheel={() => {
+          pause();
+          scheduleResume();
+        }}
+        onScroll={(event) => {
+          wrapScroll(event.currentTarget);
+        }}
+      >
+        {loopItems.map((aluno, index) => (
+          <FighterCard key={`${aluno.id}-${index}`} aluno={aluno} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -273,31 +398,28 @@ export function LandingPage() {
   }, []);
 
   const year = useMemo(() => new Date().getFullYear(), []);
-  const loopItems = useMemo(() => {
-    if (alunos.length === 0) return [];
-    return [...alunos, ...alunos];
-  }, [alunos]);
-
-  const marqueeSeconds = Math.max(24, alunos.length * 9);
 
   return (
     <div
       className={`min-h-screen bg-paper font-sans text-ink ${loaded ? 'landing-ready' : ''}`}
     >
-      <section className="relative isolate flex min-h-svh flex-col justify-between overflow-hidden text-cream" aria-label="Equipe Paraba">
+      <section
+        className="relative isolate flex min-h-svh flex-col overflow-hidden text-cream max-md:justify-start md:justify-between"
+        aria-label="Equipe Paraba"
+      >
         <div
           className="absolute inset-0 z-0 bg-linear-to-br from-[#171c22] via-[#0d1116] to-[#1a1510]"
           aria-hidden="true"
         >
           <img
-            className="hero-mark-enter absolute -right-[8%] -bottom-[18%] w-[min(72vw,720px)] mix-blend-soft-light grayscale contrast-105 max-[720px]:-right-[30%] max-[720px]:-bottom-[10%] max-[720px]:w-[110vw]"
+            className="hero-mark-enter absolute w-[min(72vw,720px)] mix-blend-soft-light grayscale contrast-105 max-md:top-[16%] max-md:left-1/2 max-md:w-[min(82vw,360px)] max-md:-translate-x-1/2 max-md:opacity-55 max-md:mix-blend-normal max-md:grayscale-0 max-md:contrast-100 md:-right-[8%] md:-bottom-[18%] max-md:right-auto max-md:bottom-auto"
             src="/logo.png"
             alt=""
           />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_18%_20%,rgba(196,92,38,0.28),transparent_55%),linear-gradient(180deg,rgba(13,17,22,0.15)_0%,rgba(13,17,22,0.72)_70%,#0d1116_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_18%_20%,rgba(196,92,38,0.28),transparent_55%),linear-gradient(180deg,rgba(13,17,22,0.15)_0%,rgba(13,17,22,0.72)_70%,#0d1116_100%)] max-md:bg-[radial-gradient(ellipse_90%_55%_at_50%_22%,rgba(196,92,38,0.32),transparent_58%),linear-gradient(180deg,rgba(13,17,22,0.12)_0%,rgba(13,17,22,0.42)_55%,rgba(13,17,22,0.88)_100%)]" />
         </div>
 
-        <header className="hero-enter relative z-20 mx-auto flex w-[min(1120px,calc(100%-40px))] items-center justify-between gap-4 pt-7">
+        <header className="hero-enter relative z-20 mx-auto flex w-[min(1120px,calc(100%-40px))] items-center justify-between gap-4 pt-5 md:pt-7">
           <a href="#" className="inline-flex items-center gap-3">
             <img src="/logo.png" alt="Equipe Paraba" className="h-11 w-11 object-contain" />
             <span className="font-extrabold tracking-wide">Equipe Paraba</span>
@@ -384,19 +506,19 @@ export function LandingPage() {
           </div>
         ) : null}
 
-        <div className="hero-enter-delay relative z-1 mx-auto w-[min(1120px,calc(100%-40px))] max-w-[720px] pb-10 max-[720px]:mx-auto sm:pb-14 lg:ml-[max(20px,calc((100%-1120px)/2))] lg:mr-auto">
-          <p className="mb-2.5 font-display text-[clamp(48px,10vw,92px)] leading-[0.9] tracking-[0.03em]">
+        <div className="hero-enter-delay relative z-1 mx-auto mt-8 w-[min(1120px,calc(100%-40px))] max-w-[720px] pb-10 max-md:mt-[min(48vh,420px)] max-md:pb-12 sm:pb-14 md:mt-0 lg:ml-[max(20px,calc((100%-1120px)/2))] lg:mr-auto">
+          <p className="mb-2.5 font-display text-[clamp(40px,10vw,92px)] leading-[0.9] tracking-[0.03em] max-md:mb-2">
             Equipe Paraba
           </p>
-          <h1 className="m-0 max-w-[16ch] text-[clamp(26px,4.4vw,40px)] font-bold leading-[1.15] text-[#f0ebe3]">
+          <h1 className="m-0 max-w-[16ch] text-[clamp(22px,4.4vw,40px)] font-bold leading-[1.15] text-[#f0ebe3]">
             Jiu-Jitsu com disciplina, respeito e evolução.
           </h1>
-          <p className="mt-4 max-w-[34ch] text-[17px] leading-normal text-hero-lead">
+          <p className="mt-3 max-w-[34ch] text-[16px] leading-normal text-hero-lead md:mt-4 md:text-[17px]">
             Treinos para kids, juvenil e adulto, uma equipe, um material e um propósito.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-3 md:mt-7">
             <a
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-[22px] font-extrabold text-[#062410] transition hover:-translate-y-px hover:bg-[#2fe075]"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-[22px] font-extrabold text-[#062410] transition hover:-translate-y-px hover:bg-[#2fe075] sm:flex-none"
               href={WHATSAPP_URL}
               target="_blank"
               rel="noreferrer"
@@ -405,7 +527,7 @@ export function LandingPage() {
               Falar no WhatsApp
             </a>
             <a
-              className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-cream/35 px-[22px] font-extrabold text-cream transition hover:bg-cream/10"
+              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[10px] border border-cream/35 px-[22px] font-extrabold text-cream transition hover:bg-cream/10 sm:flex-none"
               href="#equipe"
             >
               Conhecer a equipe
@@ -426,16 +548,7 @@ export function LandingPage() {
             Em breve, os atletas da Equipe Paraba aparecem aqui.
           </p>
         ) : (
-          <div
-            className="fighters-marquee overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]"
-            style={{ ['--marquee-duration' as string]: `${marqueeSeconds}s` }}
-          >
-            <div className="animate-fighters-scroll flex w-max gap-[18px] pl-[18px] sm:gap-7 sm:pl-7 motion-reduce:mx-auto motion-reduce:w-[min(1200px,calc(100%-48px))] motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:pl-0">
-              {loopItems.map((aluno, index) => (
-                <FighterCard key={`${aluno.id}-${index}`} aluno={aluno} />
-              ))}
-            </div>
-          </div>
+          <FightersMarquee alunos={alunos} />
         )}
       </section>
 

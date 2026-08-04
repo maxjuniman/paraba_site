@@ -263,16 +263,27 @@ table.data th {
   padding: 28px 12px;
 }
 
-/* Landing motion (keyframes) */
-@keyframes fighters-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+.fighters-scroller {
+  cursor: grab;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
 
+.fighters-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.fighters-scroller.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.fighters-scroller.is-dragging * {
+  pointer-events: none;
+}
+
+/* Landing motion (keyframes) */
 @keyframes hero-fade-up {
   from {
     opacity: 0;
@@ -282,11 +293,6 @@ table.data th {
     opacity: 1;
     transform: none;
   }
-}
-
-.animate-fighters-scroll {
-  animation: fighters-scroll var(--marquee-duration, 60s) linear infinite;
-  will-change: transform;
 }
 
 .landing-ready .hero-enter {
@@ -302,10 +308,6 @@ table.data th {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fighters-scroll {
-    animation: none;
-  }
-
   .landing-ready .hero-enter,
   .landing-ready .hero-enter-delay,
   .landing-ready .hero-mark-enter {
