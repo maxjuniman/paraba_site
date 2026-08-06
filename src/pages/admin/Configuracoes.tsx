@@ -60,12 +60,16 @@ export function AdminConfiguracoesPage() {
     event.preventDefault();
     setError('');
     setMessage('');
+    if (!prof.celular.trim()) {
+      setError('O celular é obrigatorio.');
+      return;
+    }
     try {
       setSavingProf(true);
       await parabaService.cadastrarProfessor({
         nome: prof.nome.trim(),
         email: prof.email.trim().toLowerCase(),
-        celular: prof.celular.trim() ? normalizePhoneWithBrazilCode(prof.celular) : undefined,
+        celular: normalizePhoneWithBrazilCode(prof.celular),
         senha: prof.senha,
         confirmacao_senha: prof.confirmacao_senha,
       });
@@ -162,9 +166,10 @@ export function AdminConfiguracoesPage() {
           />
           <input
             className="input"
-            placeholder="Celular (opcional)"
+            placeholder="Celular"
             value={prof.celular}
             onChange={(e) => setProf((p) => ({ ...p, celular: formatPhone(e.target.value) }))}
+            required
           />
           <input
             className="input"

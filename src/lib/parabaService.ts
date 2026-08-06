@@ -39,12 +39,26 @@ export const parabaService = {
   async cadastrarProfessor(body: {
     nome: string;
     email: string;
-    celular?: string;
+    celular: string;
     senha: string;
     confirmacao_senha: string;
   }): Promise<AuthPayload & { data?: SessionUser }> {
     const { data } = await api.post<AuthPayload & { data?: SessionUser; message?: string }>(
       '/users/professores',
+      body
+    );
+    return data;
+  },
+
+  async cadastrarUsuario(body: {
+    nome: string;
+    email: string;
+    celular: string;
+    senha: string;
+    confirmacao_senha: string;
+  }): Promise<{ message?: string; user?: SessionUser; data?: SessionUser; accessToken?: string }> {
+    const { data } = await api.post<{ message?: string; user?: SessionUser; data?: SessionUser; accessToken?: string }>(
+      '/auth/register',
       body
     );
     return data;
