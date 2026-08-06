@@ -105,7 +105,7 @@ export function AdminLoginPage() {
         <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
           Ainda não tem conta?{' '}
           <Link to="/admin/register" style={{ fontWeight: 800 }}>
-            Criar conta
+            Crie sua conta
           </Link>
         </p>
         <Link className="btn btn-ghost" to="/">
