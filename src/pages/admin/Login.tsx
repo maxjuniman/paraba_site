@@ -109,7 +109,7 @@ export function AdminLoginPage() {
           </Link>
         </p>
         <Link className="btn btn-ghost" to="/">
-          Voltar ao site
+          Volte ao site
         </Link>
       </form>
     </div>
