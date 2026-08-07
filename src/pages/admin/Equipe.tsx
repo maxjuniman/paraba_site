@@ -76,7 +76,7 @@ function EquipeMemberCard({
 }: {
   membro: EquipeAluno;
   savingPhoto?: boolean;
-  onChangePhoto?: (file: File) => void;
+  onChangePhoto?: (file: File, alunoId: string) => void;
 }) {
   const faixa = membro.faixaAtual?.trim() || 'Sem faixa';
   const graus = normalizeGraus(membro.graus);
@@ -112,7 +112,7 @@ function EquipeMemberCard({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = '';
-                if (file && onChangePhoto) onChangePhoto(file);
+                if (file && onChangePhoto) onChangePhoto(file, membro.id);
               }}
             />
             <button
@@ -168,7 +168,7 @@ export function AdminEquipePage() {
   const aluno = isAluno(user);
   const [equipe, setEquipe] = useState<EquipeAluno[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingPhoto, setSavingPhoto] = useState(false);
+  const [savingPhotoId, setSavingPhotoId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<StudentCategoryId>('all');
@@ -201,21 +201,21 @@ export function AdminEquipePage() {
     return list.filter((membro) => getStudentCategoryByBirthDate(membro.dataNascimento)?.id === categoryFilter);
   }, [equipe, categoryFilter]);
 
-  const updateMyPhoto = async (file: File) => {
+  const updateMyPhoto = async (file: File, alunoId: string) => {
     try {
-      setSavingPhoto(true);
+      setSavingPhotoId(alunoId);
       setError('');
       setMessage('');
       const foto = await fileToCompressedDataUrl(file);
-      const updated = await parabaService.atualizarMinhaFotoEquipe(foto);
+      const updated = await parabaService.atualizarMinhaFotoEquipe(foto, alunoId);
       setEquipe((prev) =>
-        prev.map((item) => (item.isMe || item.id === updated.id ? { ...item, ...updated, isMe: true } : item))
+        prev.map((item) => (item.id === updated.id ? { ...item, ...updated, isMe: true } : item))
       );
       setMessage('Foto atualizada.');
     } catch (err) {
       setError(apiErrorMessage(err, 'Nao foi possivel atualizar a foto.'));
     } finally {
-      setSavingPhoto(false);
+      setSavingPhotoId(null);
     }
   };
 
@@ -266,8 +266,8 @@ export function AdminEquipePage() {
           <EquipeMemberCard
             key={membro.id}
             membro={membro}
-            savingPhoto={membro.isMe ? savingPhoto : false}
-            onChangePhoto={membro.isMe ? (file) => void updateMyPhoto(file) : undefined}
+            savingPhoto={savingPhotoId === membro.id}
+            onChangePhoto={membro.isMe ? (file, alunoId) => void updateMyPhoto(file, alunoId) : undefined}
           />
         ))}
       </div>
