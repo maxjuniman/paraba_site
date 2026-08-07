@@ -5,7 +5,7 @@ import { formatPhone } from '@/lib/formatters';
 import { useAuth } from '@/lib/AuthContext';
 import { fileToCompressedDataUrl } from '@/lib/imageUpload';
 import { parabaService } from '@/lib/parabaService';
-import { isProfessor } from '@/lib/session';
+import { isAluno, isProfessor } from '@/lib/session';
 import './Configuracoes.css';
 
 const FAIXAS = ['Branca', 'Cinza', 'Amarela', 'Laranja', 'Verde', 'Azul', 'Roxa', 'Marrom', 'Preta'];
@@ -14,10 +14,13 @@ const GRAUS = [0, 1, 2, 3, 4];
 export function AdminConfiguracoesEditarPage() {
   const { user, setUser } = useAuth();
   const professor = isProfessor(user);
+  const aluno = isAluno(user);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [nome, setNome] = useState(user?.nome ?? '');
   const [celular, setCelular] = useState(user?.celular ? formatPhone(user.celular) : '');
   const [foto, setFoto] = useState<string | null>(user?.foto ?? null);
+  const [fotoInicial, setFotoInicial] = useState<string | null>(user?.foto ?? null);
+  const [alunoFotoId, setAlunoFotoId] = useState<string | null>(null);
   const [faixaAtual, setFaixaAtual] = useState(user?.faixaAtual ?? 'Preta');
   const [graus, setGraus] = useState(user?.graus ?? 0);
   const [novaSenha, setNovaSenha] = useState('');
@@ -33,9 +36,24 @@ export function AdminConfiguracoesEditarPage() {
         setUser(profile);
         setNome(profile.nome);
         setCelular(profile.celular ? formatPhone(profile.celular) : '');
-        setFoto(profile.foto ?? null);
         setFaixaAtual(profile.faixaAtual?.trim() || 'Preta');
         setGraus(Math.max(0, Math.min(4, profile.graus ?? 0)));
+
+        if (isAluno(profile)) {
+          try {
+            const meuAluno = await parabaService.obterMeuAluno();
+            setAlunoFotoId(meuAluno.id);
+            setFoto(meuAluno.foto ?? null);
+            setFotoInicial(meuAluno.foto ?? null);
+          } catch {
+            setAlunoFotoId(null);
+            setFoto(null);
+            setFotoInicial(null);
+          }
+        } else {
+          setFoto(profile.foto ?? null);
+          setFotoInicial(profile.foto ?? null);
+        }
       } catch {
         // Mantém dados da sessao local.
       }
@@ -66,9 +84,9 @@ export function AdminConfiguracoesEditarPage() {
       const updated = await parabaService.atualizarMeuPerfil({
         nome: nome.trim(),
         celular: celular.trim() || undefined,
-        foto,
         ...(professor
           ? {
+              foto,
               faixaAtual: faixaAtual.trim() || null,
               graus,
             }
@@ -76,9 +94,21 @@ export function AdminConfiguracoesEditarPage() {
         novaSenha: novaSenha || undefined,
       });
       setUser(updated);
-      setFoto(updated.foto ?? null);
-      setFaixaAtual(updated.faixaAtual?.trim() || 'Preta');
-      setGraus(Math.max(0, Math.min(4, updated.graus ?? 0)));
+
+      if (aluno) {
+        if (foto !== fotoInicial) {
+          const savedAluno = await parabaService.atualizarMinhaFotoEquipe(foto, alunoFotoId ?? undefined);
+          setAlunoFotoId(savedAluno.id);
+          setFoto(savedAluno.foto ?? null);
+          setFotoInicial(savedAluno.foto ?? null);
+        }
+      } else {
+        setFoto(updated.foto ?? null);
+        setFotoInicial(updated.foto ?? null);
+        setFaixaAtual(updated.faixaAtual?.trim() || 'Preta');
+        setGraus(Math.max(0, Math.min(4, updated.graus ?? 0)));
+      }
+
       setNovaSenha('');
       setConfirmacao('');
       setMessage('Cadastro atualizado.');
@@ -163,7 +193,7 @@ export function AdminConfiguracoesEditarPage() {
             <p className="muted" style={{ margin: 0, fontSize: 13 }}>
               {professor
                 ? 'A foto, faixa e graus aparecem em Nossos lutadores e no carrossel de depoimentos.'
-                : 'A foto aparece no carrossel de depoimentos do site, se você tiver depoimento publicado.'}
+                : 'Mesma foto da página Equipe. Também aparece no carrossel de depoimentos, se você tiver depoimento publicado.'}
             </p>
           </div>
         </div>

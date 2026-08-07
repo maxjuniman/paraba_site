@@ -145,6 +145,14 @@ export type DepoimentoAdmin = {
   createdAt?: string;
 };
 
+export type VideoUpdate = {
+  id: string;
+  titulo: string;
+  descricao?: string | null;
+  url: string;
+  createdAt?: string;
+};
+
 export type EquipeAluno = Pick<
   Aluno,
   'id' | 'nome' | 'apelido' | 'foto' | 'dataNascimento' | 'faixaAtual' | 'graus'

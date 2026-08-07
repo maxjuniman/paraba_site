@@ -14,6 +14,7 @@ import type {
   SessionUser,
   TipoAula,
   UsuarioAtivoComVinculos,
+  VideoUpdate,
   VinculosUsuario,
 } from './types';
 
@@ -285,5 +286,23 @@ export const parabaService = {
 
   async excluirDepoimento(id: string): Promise<void> {
     await api.delete(`/depoimentos/${id}`);
+  },
+
+  async listarVideos(): Promise<VideoUpdate[]> {
+    const { data } = await api.get<{ data?: VideoUpdate[] } | VideoUpdate[]>('/videos');
+    return Array.isArray(data) ? data : data.data ?? [];
+  },
+
+  async publicarVideo(body: {
+    titulo: string;
+    descricao?: string;
+    url: string;
+  }): Promise<VideoUpdate> {
+    const { data } = await api.post<{ data?: VideoUpdate } | VideoUpdate>('/videos', body);
+    return unwrapData<VideoUpdate>(data);
+  },
+
+  async excluirVideo(id: string): Promise<void> {
+    await api.delete(`/videos/${id}`);
   },
 };

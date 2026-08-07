@@ -17,6 +17,7 @@ import { AdminLoginPage } from '@/pages/admin/Login';
 import { AdminPagamentosPage } from '@/pages/admin/Pagamentos';
 import { AdminPresencasPage } from '@/pages/admin/Presencas';
 import { AdminRegisterPage } from '@/pages/admin/Register';
+import { AdminVideosPage } from '@/pages/admin/Videos';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route index element={<AdminHomePage />} />
               <Route path="calendario" element={<AdminCalendarioPage />} />
+              <Route path="videos" element={<AdminVideosPage />} />
               <Route path="depoimentos" element={<AdminDepoimentosPage />} />
               <Route path="configuracoes" element={<AdminConfiguracoesPage />} />
               <Route path="configuracoes/editar" element={<AdminConfiguracoesEditarPage />} />
