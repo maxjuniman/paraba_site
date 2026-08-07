@@ -19,6 +19,11 @@ export function AdminDepoimentosPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [toDelete, setToDelete] = useState<DepoimentoAdmin | null>(null);
+  const [editing, setEditing] = useState<DepoimentoAdmin | null>(null);
+  const [editNome, setEditNome] = useState('');
+  const [editTexto, setEditTexto] = useState('');
+  const [editFaixa, setEditFaixa] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     try {
@@ -106,6 +111,59 @@ export function AdminDepoimentosPage() {
     }
   };
 
+  const openEdit = (item: DepoimentoAdmin) => {
+    setError('');
+    setEditing(item);
+    setEditNome(item.nome);
+    setEditTexto(item.texto);
+    setEditFaixa(item.faixa ?? '');
+  };
+
+  const closeEdit = () => {
+    if (savingEdit) return;
+    setEditing(null);
+    setEditNome('');
+    setEditTexto('');
+    setEditFaixa('');
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const texto = editTexto.trim();
+    const nome = editNome.trim();
+    if (nome.length < 1) {
+      setError('Informe o nome.');
+      return;
+    }
+    if (texto.length < 10) {
+      setError('O depoimento deve ter pelo menos 10 caracteres.');
+      return;
+    }
+    if (texto.length > 800) {
+      setError('O depoimento deve ter no maximo 800 caracteres.');
+      return;
+    }
+    try {
+      setSavingEdit(true);
+      setError('');
+      const updated = await parabaService.atualizarDepoimento(editing.id, {
+        nome,
+        texto,
+        faixa: editFaixa.trim() || null,
+      });
+      setLista((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      if (updated.id === meuId || updated.userId === user?.id) {
+        setMeuTexto(updated.texto);
+      }
+      setMessage('Depoimento atualizado.');
+      setEditing(null);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const confirmExcluir = async () => {
     if (!toDelete) return;
     const item = toDelete;
@@ -138,7 +196,7 @@ export function AdminDepoimentosPage() {
           <h1>Depoimentos</h1>
           <p>
             {professor
-              ? `Aprove depoimentos dos alunos. Só os aprovados aparecem no site.${
+              ? `Aprove e edite depoimentos dos alunos. Só os aprovados aparecem no site.${
                   pendentes > 0 ? ` ${pendentes} pendente${pendentes === 1 ? '' : 's'}.` : ''
                 }`
               : 'Envie seu depoimento. Ele aparece no site após aprovação de um professor.'}
@@ -215,6 +273,14 @@ export function AdminDepoimentosPage() {
                 <div className="row" style={{ gap: 8 }}>
                   <button
                     type="button"
+                    className="btn btn-secondary"
+                    disabled={busyId === item.id}
+                    onClick={() => openEdit(item)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
                     className={`btn ${item.ativo ? 'btn-ghost' : 'btn-primary'}`}
                     disabled={busyId === item.id}
                     onClick={() => void toggleAtivo(item)}
@@ -261,6 +327,68 @@ export function AdminDepoimentosPage() {
         }}
         onConfirm={() => void confirmExcluir()}
       />
+
+      {editing ? (
+        <div className="confirm-overlay" role="presentation" onClick={closeEdit}>
+          <div
+            className="confirm-dialog card stack"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-depoimento-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="edit-depoimento-title" style={{ margin: 0, textAlign: 'center' }}>
+              Editar depoimento
+            </h2>
+            <div>
+              <label className="label">Nome</label>
+              <input
+                className="input"
+                value={editNome}
+                onChange={(e) => setEditNome(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Faixa (opcional)</label>
+              <input
+                className="input"
+                value={editFaixa}
+                onChange={(e) => setEditFaixa(e.target.value)}
+                placeholder="Ex.: Azul"
+              />
+            </div>
+            <div>
+              <label className="label">Texto</label>
+              <textarea
+                className="input"
+                style={{ minHeight: 140, paddingTop: 12, paddingBottom: 12, resize: 'vertical' }}
+                value={editTexto}
+                onChange={(e) => setEditTexto(e.target.value)}
+                minLength={10}
+                maxLength={800}
+                required
+              />
+              <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                {editTexto.trim().length}/800
+              </p>
+            </div>
+            <div className="row" style={{ justifyContent: 'center', marginTop: 4 }}>
+              <button type="button" className="btn btn-ghost" disabled={savingEdit} onClick={closeEdit}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={savingEdit}
+                onClick={() => void saveEdit()}
+              >
+                {savingEdit ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

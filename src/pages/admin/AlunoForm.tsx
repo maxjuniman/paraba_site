@@ -24,6 +24,7 @@ export function AdminAlunoFormPage() {
   const isEditing = Boolean(id);
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
+  const [userEmail, setUserEmail] = useState('');
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -39,11 +40,13 @@ export function AdminAlunoFormPage() {
           setError('Aluno nao encontrado.');
           return;
         }
+        const raw = aluno as typeof aluno & { email_responsavel?: string | null };
+        setUserEmail(aluno.user?.email ?? '');
         setForm({
           nome: aluno.nome,
           apelido: aluno.apelido ?? '',
           nomeResponsavel: aluno.nomeResponsavel ?? '',
-          emailResponsavel: aluno.emailResponsavel ?? '',
+          emailResponsavel: aluno.emailResponsavel ?? raw.email_responsavel ?? '',
           celular: aluno.celular ? formatPhone(aluno.celular) : '',
           dataNascimento: isoToBrDate(aluno.dataNascimento),
           dataPagamento: aluno.dataPagamento ?? '',
@@ -150,8 +153,14 @@ export function AdminAlunoFormPage() {
               onChange={(e) => setForm((p) => ({ ...p, nomeResponsavel: e.target.value }))}
             />
           </div>
+          {userEmail ? (
+            <div>
+              <label className="label">E-mail do usuário (app)</label>
+              <input className="input" type="email" value={userEmail} disabled />
+            </div>
+          ) : null}
           <div>
-            <label className="label">E-mail (opcional)</label>
+            <label className="label">E-mail do responsável (opcional)</label>
             <input
               className="input"
               type="email"
