@@ -32,7 +32,6 @@ export const parabaService = {
     nome: string;
     celular?: string;
     foto?: string | null;
-    senhaAtual?: string;
     novaSenha?: string;
   }): Promise<SessionUser> {
     const { data } = await api.patch<{ data?: SessionUser } | SessionUser>('/auth/me', body);

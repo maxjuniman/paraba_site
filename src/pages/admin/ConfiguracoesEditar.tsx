@@ -13,7 +13,6 @@ export function AdminConfiguracoesEditarPage() {
   const [nome, setNome] = useState(user?.nome ?? '');
   const [celular, setCelular] = useState(user?.celular ? formatPhone(user.celular) : '');
   const [foto, setFoto] = useState<string | null>(user?.foto ?? null);
-  const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,9 +46,9 @@ export function AdminConfiguracoesEditarPage() {
     event.preventDefault();
     setError('');
     setMessage('');
-    if (novaSenha || confirmacao || senhaAtual) {
-      if (!senhaAtual || novaSenha.length < 6 || novaSenha !== confirmacao) {
-        setError('Para alterar a senha, preencha senha atual, nova senha (6+) e confirmação iguais.');
+    if (novaSenha || confirmacao) {
+      if (novaSenha.length < 6 || novaSenha !== confirmacao) {
+        setError('Para alterar a senha, preencha nova senha (6+) e confirmação iguais.');
         return;
       }
     }
@@ -59,12 +58,10 @@ export function AdminConfiguracoesEditarPage() {
         nome: nome.trim(),
         celular: celular.trim() || undefined,
         foto,
-        senhaAtual: senhaAtual || undefined,
         novaSenha: novaSenha || undefined,
       });
       setUser(updated);
       setFoto(updated.foto ?? null);
-      setSenhaAtual('');
       setNovaSenha('');
       setConfirmacao('');
       setMessage('Cadastro atualizado.');
@@ -165,14 +162,6 @@ export function AdminConfiguracoesEditarPage() {
           />
         </div>
         <h3 style={{ margin: '8px 0 0' }}>Alterar senha (opcional)</h3>
-        <input
-          className="input"
-          type="password"
-          placeholder="Senha atual"
-          value={senhaAtual}
-          onChange={(e) => setSenhaAtual(e.target.value)}
-          autoComplete="current-password"
-        />
         <input
           className="input"
           type="password"
