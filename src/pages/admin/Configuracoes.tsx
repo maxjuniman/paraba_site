@@ -145,7 +145,9 @@ export function AdminConfiguracoesPage() {
           to="/admin/configuracoes/editar"
           icon={<IconUser />}
           label="Editar cadastro"
-          subtitle="Nome, celular, foto e senha"
+          subtitle={
+            professor ? 'Nome, celular, foto, faixa e senha' : 'Nome, celular, foto e senha'
+          }
         />
 
         {aluno ? (

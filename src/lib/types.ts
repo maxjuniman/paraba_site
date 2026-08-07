@@ -9,6 +9,8 @@ export type SessionUser = {
   ativo: boolean;
   alunoId?: string | null;
   foto?: string | null;
+  faixaAtual?: string | null;
+  graus?: number | null;
 };
 
 export type AuthPayload = {

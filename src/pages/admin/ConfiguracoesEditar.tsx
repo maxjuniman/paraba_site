@@ -5,14 +5,21 @@ import { formatPhone } from '@/lib/formatters';
 import { useAuth } from '@/lib/AuthContext';
 import { fileToCompressedDataUrl } from '@/lib/imageUpload';
 import { parabaService } from '@/lib/parabaService';
+import { isProfessor } from '@/lib/session';
 import './Configuracoes.css';
+
+const FAIXAS = ['Branca', 'Cinza', 'Amarela', 'Laranja', 'Verde', 'Azul', 'Roxa', 'Marrom', 'Preta'];
+const GRAUS = [0, 1, 2, 3, 4];
 
 export function AdminConfiguracoesEditarPage() {
   const { user, setUser } = useAuth();
+  const professor = isProfessor(user);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [nome, setNome] = useState(user?.nome ?? '');
   const [celular, setCelular] = useState(user?.celular ? formatPhone(user.celular) : '');
   const [foto, setFoto] = useState<string | null>(user?.foto ?? null);
+  const [faixaAtual, setFaixaAtual] = useState(user?.faixaAtual ?? 'Preta');
+  const [graus, setGraus] = useState(user?.graus ?? 0);
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [saving, setSaving] = useState(false);
@@ -27,6 +34,8 @@ export function AdminConfiguracoesEditarPage() {
         setNome(profile.nome);
         setCelular(profile.celular ? formatPhone(profile.celular) : '');
         setFoto(profile.foto ?? null);
+        setFaixaAtual(profile.faixaAtual?.trim() || 'Preta');
+        setGraus(Math.max(0, Math.min(4, profile.graus ?? 0)));
       } catch {
         // Mantém dados da sessao local.
       }
@@ -58,10 +67,18 @@ export function AdminConfiguracoesEditarPage() {
         nome: nome.trim(),
         celular: celular.trim() || undefined,
         foto,
+        ...(professor
+          ? {
+              faixaAtual: faixaAtual.trim() || null,
+              graus,
+            }
+          : {}),
         novaSenha: novaSenha || undefined,
       });
       setUser(updated);
       setFoto(updated.foto ?? null);
+      setFaixaAtual(updated.faixaAtual?.trim() || 'Preta');
+      setGraus(Math.max(0, Math.min(4, updated.graus ?? 0)));
       setNovaSenha('');
       setConfirmacao('');
       setMessage('Cadastro atualizado.');
@@ -80,7 +97,11 @@ export function AdminConfiguracoesEditarPage() {
             ‹ Voltar
           </Link>
           <h1>Editar cadastro</h1>
-          <p>Atualize nome, celular, foto e senha.</p>
+          <p>
+            {professor
+              ? 'Atualize nome, celular, foto, faixa, graus e senha.'
+              : 'Atualize nome, celular, foto e senha.'}
+          </p>
         </div>
       </header>
 
@@ -140,7 +161,9 @@ export function AdminConfiguracoesEditarPage() {
               </button>
             ) : null}
             <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-              A foto aparece no carrossel de depoimentos do site, se você tiver depoimento publicado.
+              {professor
+                ? 'A foto, faixa e graus aparecem em Nossos lutadores e no carrossel de depoimentos.'
+                : 'A foto aparece no carrossel de depoimentos do site, se você tiver depoimento publicado.'}
             </p>
           </div>
         </div>
@@ -161,6 +184,42 @@ export function AdminConfiguracoesEditarPage() {
             onChange={(e) => setCelular(formatPhone(e.target.value))}
           />
         </div>
+
+        {professor ? (
+          <>
+            <div>
+              <label className="label">Faixa</label>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                {FAIXAS.map((faixa) => (
+                  <button
+                    key={faixa}
+                    type="button"
+                    className={`chip ${faixaAtual === faixa ? 'active' : ''}`}
+                    onClick={() => setFaixaAtual(faixa)}
+                  >
+                    {faixa}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="label">Graus</label>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                {GRAUS.map((grau) => (
+                  <button
+                    key={grau}
+                    type="button"
+                    className={`chip ${graus === grau ? 'active' : ''}`}
+                    onClick={() => setGraus(grau)}
+                  >
+                    {grau}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
+
         <h3 style={{ margin: '8px 0 0' }}>Alterar senha (opcional)</h3>
         <input
           className="input"
