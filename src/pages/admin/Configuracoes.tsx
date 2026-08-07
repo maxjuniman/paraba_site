@@ -145,7 +145,7 @@ export function AdminConfiguracoesPage() {
           to="/admin/configuracoes/editar"
           icon={<IconUser />}
           label="Editar cadastro"
-          subtitle="Nome, celular e senha"
+          subtitle="Nome, celular, foto e senha"
         />
 
         {aluno ? (
@@ -174,7 +174,7 @@ export function AdminConfiguracoesPage() {
               to="/admin/depoimentos"
               icon={<IconChat />}
               label="Meu depoimento"
-              subtitle="Texto e foto no carrossel do site"
+              subtitle="Texto no carrossel do site"
             />
             <div className="settings-divider" />
             <SettingsRow

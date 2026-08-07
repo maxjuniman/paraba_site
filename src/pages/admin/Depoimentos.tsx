@@ -1,8 +1,7 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
-import { fileToCompressedDataUrl } from '@/lib/imageUpload';
 import { parabaService } from '@/lib/parabaService';
 import { isProfessor } from '@/lib/session';
 import type { DepoimentoAdmin } from '@/lib/types';
@@ -10,11 +9,9 @@ import type { DepoimentoAdmin } from '@/lib/types';
 export function AdminDepoimentosPage() {
   const { user } = useAuth();
   const professor = isProfessor(user);
-  const photoInputRef = useRef<HTMLInputElement>(null);
   const [meuTexto, setMeuTexto] = useState('');
   const [meuId, setMeuId] = useState<string | null>(null);
   const [meuAtivo, setMeuAtivo] = useState(false);
-  const [meuFoto, setMeuFoto] = useState<string | null>(null);
   const [lista, setLista] = useState<DepoimentoAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingMe, setSavingMe] = useState(false);
@@ -26,24 +23,18 @@ export function AdminDepoimentosPage() {
   const [editNome, setEditNome] = useState('');
   const [editTexto, setEditTexto] = useState('');
   const [editFaixa, setEditFaixa] = useState('');
-  const [editFoto, setEditFoto] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const editPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const applyMine = (mine: DepoimentoAdmin | null) => {
     if (professor) {
-      // Só preenche o formulário do professor com depoimento já publicado.
-      // Pendentes ficam apenas em "Aprovar / gerenciar".
       if (mine?.ativo) {
         setMeuId(mine.id);
         setMeuTexto(mine.texto);
         setMeuAtivo(true);
-        setMeuFoto(mine.foto ?? null);
       } else {
         setMeuId(null);
         setMeuTexto('');
         setMeuAtivo(false);
-        setMeuFoto(null);
       }
       return;
     }
@@ -51,7 +42,6 @@ export function AdminDepoimentosPage() {
     setMeuId(mine?.id ?? null);
     setMeuTexto(mine?.texto ?? '');
     setMeuAtivo(Boolean(mine?.ativo));
-    setMeuFoto(mine?.foto ?? null);
   };
 
   const load = async () => {
@@ -77,35 +67,16 @@ export function AdminDepoimentosPage() {
     void load();
   }, [professor]);
 
-  const onPickMinePhoto = async (file: File) => {
-    try {
-      setError('');
-      setMeuFoto(await fileToCompressedDataUrl(file, { maxSide: 480, quality: 0.7 }));
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Nao foi possivel processar a foto.'));
-    }
-  };
-
-  const onPickEditPhoto = async (file: File) => {
-    try {
-      setError('');
-      setEditFoto(await fileToCompressedDataUrl(file, { maxSide: 480, quality: 0.7 }));
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Nao foi possivel processar a foto.'));
-    }
-  };
-
   const saveMine = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     setMessage('');
     try {
       setSavingMe(true);
-      const saved = await parabaService.salvarMeuDepoimento(meuTexto.trim(), meuFoto);
+      const saved = await parabaService.salvarMeuDepoimento(meuTexto.trim());
       setMeuId(saved.id);
       setMeuTexto(saved.texto);
       setMeuAtivo(Boolean(saved.ativo));
-      setMeuFoto(saved.foto ?? null);
       setMessage(
         saved.ativo
           ? 'Seu depoimento foi publicado no site.'
@@ -132,12 +103,10 @@ export function AdminDepoimentosPage() {
           setMeuId(updated.id);
           setMeuTexto(updated.texto);
           setMeuAtivo(true);
-          setMeuFoto(updated.foto ?? null);
         } else if (professor) {
           setMeuId(null);
           setMeuTexto('');
           setMeuAtivo(false);
-          setMeuFoto(null);
         }
       }
       setMessage(updated.ativo ? 'Depoimento aprovado e visível no site.' : 'Depoimento ocultado do site.');
@@ -154,7 +123,6 @@ export function AdminDepoimentosPage() {
     setEditNome(item.nome);
     setEditTexto(item.texto);
     setEditFaixa(item.faixa ?? '');
-    setEditFoto(item.foto ?? null);
   };
 
   const closeEdit = () => {
@@ -163,7 +131,6 @@ export function AdminDepoimentosPage() {
     setEditNome('');
     setEditTexto('');
     setEditFaixa('');
-    setEditFoto(null);
   };
 
   const saveEdit = async () => {
@@ -189,12 +156,10 @@ export function AdminDepoimentosPage() {
         nome,
         texto,
         faixa: editFaixa.trim() || null,
-        foto: editFoto,
       });
       setLista((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
       if (updated.id === meuId || updated.userId === user?.id) {
         setMeuTexto(updated.texto);
-        setMeuFoto(updated.foto ?? null);
       }
       setMessage('Depoimento atualizado.');
       setEditing(null);
@@ -218,7 +183,6 @@ export function AdminDepoimentosPage() {
         setMeuId(null);
         setMeuTexto('');
         setMeuAtivo(false);
-        setMeuFoto(null);
       }
       setToDelete(null);
       setMessage('Depoimento excluído.');
@@ -258,69 +222,13 @@ export function AdminDepoimentosPage() {
         <h2 style={{ margin: 0 }}>{meuId ? 'Meu depoimento' : 'Deixar depoimento'}</h2>
         <p className="muted" style={{ margin: 0 }}>
           {professor
-            ? 'Como professor, seu depoimento é publicado direto no site. A foto aparece no carrossel se você adicionar.'
+            ? 'Como professor, seu depoimento é publicado direto no site. A foto do carrossel fica em Configurações → Editar cadastro.'
             : meuId
               ? meuAtivo
                 ? 'Seu depoimento está aprovado e visível no site.'
                 : 'Seu depoimento está pendente de aprovação.'
               : 'Seu texto fica pendente até um professor aprovar.'}
         </p>
-
-        <div className="row" style={{ alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 999,
-              overflow: 'hidden',
-              background: '#2a2f36',
-              display: 'grid',
-              placeItems: 'center',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 24,
-              flexShrink: 0,
-            }}
-          >
-            {meuFoto ? (
-              <img src={meuFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              (user?.nome?.trim().charAt(0) || '?').toUpperCase()
-            )}
-          </div>
-          <div className="stack" style={{ gap: 8, flex: 1 }}>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = '';
-                if (file) void onPickMinePhoto(file);
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={savingMe}
-              onClick={() => photoInputRef.current?.click()}
-            >
-              {meuFoto ? 'Trocar foto' : 'Adicionar foto'}
-            </button>
-            {meuFoto ? (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                disabled={savingMe}
-                onClick={() => setMeuFoto(null)}
-              >
-                Remover foto
-              </button>
-            ) : null}
-          </div>
-        </div>
-
         <textarea
           className="input"
           name="meu-depoimento"
@@ -355,39 +263,17 @@ export function AdminDepoimentosPage() {
               style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}
             >
               <div className="row" style={{ justifyContent: 'space-between' }}>
-                <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+                <div>
+                  <strong>{item.nome}</strong>
+                  {item.faixa ? <span className="muted"> · {item.faixa}</span> : null}
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 999,
-                      overflow: 'hidden',
-                      background: '#2a2f36',
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: '#fff',
-                      fontWeight: 800,
-                      flexShrink: 0,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: item.ativo ? 'var(--secondary)' : 'var(--warning)',
                     }}
                   >
-                    {item.foto ? (
-                      <img src={item.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      item.nome.trim().charAt(0).toUpperCase() || '?'
-                    )}
-                  </div>
-                  <div>
-                    <strong>{item.nome}</strong>
-                    {item.faixa ? <span className="muted"> · {item.faixa}</span> : null}
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: item.ativo ? 'var(--secondary)' : 'var(--warning)',
-                      }}
-                    >
-                      {item.ativo ? 'Aprovado · visível no site' : 'Pendente de aprovação'}
-                    </div>
+                    {item.ativo ? 'Aprovado · visível no site' : 'Pendente de aprovação'}
                   </div>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
@@ -460,59 +346,6 @@ export function AdminDepoimentosPage() {
             <h2 id="edit-depoimento-title" style={{ margin: 0, textAlign: 'center' }}>
               Editar depoimento
             </h2>
-            <div className="row" style={{ alignItems: 'center', gap: 12 }}>
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 999,
-                  overflow: 'hidden',
-                  background: '#2a2f36',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: '#fff',
-                  fontWeight: 800,
-                  flexShrink: 0,
-                }}
-              >
-                {editFoto ? (
-                  <img src={editFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  (editNome.trim().charAt(0) || '?').toUpperCase()
-                )}
-              </div>
-              <div className="stack" style={{ gap: 6 }}>
-                <input
-                  ref={editPhotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = '';
-                    if (file) void onPickEditPhoto(file);
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  disabled={savingEdit}
-                  onClick={() => editPhotoInputRef.current?.click()}
-                >
-                  {editFoto ? 'Trocar foto' : 'Adicionar foto'}
-                </button>
-                {editFoto ? (
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    disabled={savingEdit}
-                    onClick={() => setEditFoto(null)}
-                  >
-                    Remover foto
-                  </button>
-                ) : null}
-              </div>
-            </div>
             <div>
               <label className="label">Nome</label>
               <input

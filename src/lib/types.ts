@@ -8,6 +8,7 @@ export type SessionUser = {
   tipo: UserType;
   ativo: boolean;
   alunoId?: string | null;
+  foto?: string | null;
 };
 
 export type AuthPayload = {

@@ -31,6 +31,7 @@ export const parabaService = {
   async atualizarMeuPerfil(body: {
     nome: string;
     celular?: string;
+    foto?: string | null;
     senhaAtual?: string;
     novaSenha?: string;
   }): Promise<SessionUser> {
@@ -237,10 +238,10 @@ export const parabaService = {
     return data?.data ?? null;
   },
 
-  async salvarMeuDepoimento(texto: string, foto?: string | null): Promise<DepoimentoAdmin> {
-    const body: { texto: string; foto?: string | null } = { texto };
-    if (foto !== undefined) body.foto = foto;
-    const { data } = await api.put<{ data?: DepoimentoAdmin } | DepoimentoAdmin>('/depoimentos/me', body);
+  async salvarMeuDepoimento(texto: string): Promise<DepoimentoAdmin> {
+    const { data } = await api.put<{ data?: DepoimentoAdmin } | DepoimentoAdmin>('/depoimentos/me', {
+      texto,
+    });
     return unwrapData<DepoimentoAdmin>(data);
   },
 
