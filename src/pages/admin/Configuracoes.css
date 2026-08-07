@@ -1,0 +1,119 @@
+.settings-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-profile strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.settings-profile span {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  gap: 0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+
+.settings-row:hover {
+  opacity: 0.82;
+}
+
+.settings-row:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.settings-row.is-danger .settings-row-label {
+  color: var(--danger, #f04438);
+}
+
+.settings-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg, #f4f6f9);
+  color: var(--primary, #1a222d);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.settings-row.is-danger .settings-icon {
+  border-color: color-mix(in srgb, var(--danger, #f04438) 45%, var(--border));
+  color: var(--danger, #f04438);
+}
+
+.settings-row-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-row-label {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.settings-row-sub {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.settings-chevron {
+  color: var(--text-muted);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.settings-divider {
+  height: 1px;
+  margin-left: 52px;
+  background: var(--border);
+}
+
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  border: none;
+  background: transparent;
+  color: var(--primary, #1a222d);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0;
+}
+
+.settings-back:hover {
+  opacity: 0.8;
+}
