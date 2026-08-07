@@ -296,9 +296,16 @@ export const parabaService = {
   async publicarVideo(body: {
     titulo: string;
     descricao?: string;
-    url: string;
+    file: File;
   }): Promise<VideoUpdate> {
-    const { data } = await api.post<{ data?: VideoUpdate } | VideoUpdate>('/videos', body);
+    const form = new FormData();
+    form.append('titulo', body.titulo);
+    if (body.descricao) form.append('descricao', body.descricao);
+    form.append('video', body.file);
+
+    const { data } = await api.post<{ data?: VideoUpdate } | VideoUpdate>('/videos', form, {
+      timeout: 10 * 60 * 1000,
+    });
     return unwrapData<VideoUpdate>(data);
   },
 

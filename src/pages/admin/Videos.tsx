@@ -1,15 +1,16 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { resolveMediaUrl } from '@/lib/mediaUrl';
 import { parabaService } from '@/lib/parabaService';
 import { isProfessor } from '@/lib/session';
 import type { VideoUpdate } from '@/lib/types';
-import { toVideoEmbedUrl } from '@/lib/videoEmbed';
 
 export function AdminVideosPage() {
   const { user } = useAuth();
   const professor = isProfessor(user);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [videos, setVideos] = useState<VideoUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,8 +21,8 @@ export function AdminVideosPage() {
   const [form, setForm] = useState({
     titulo: '',
     descricao: '',
-    url: '',
   });
+  const [file, setFile] = useState<File | null>(null);
 
   const load = async () => {
     try {
@@ -47,8 +48,8 @@ export function AdminVideosPage() {
       setError('Informe o título do vídeo.');
       return;
     }
-    if (!form.url.trim().startsWith('http')) {
-      setError('Informe uma URL válida do vídeo.');
+    if (!file) {
+      setError('Selecione o arquivo de vídeo.');
       return;
     }
     try {
@@ -56,11 +57,13 @@ export function AdminVideosPage() {
       const created = await parabaService.publicarVideo({
         titulo: form.titulo.trim(),
         descricao: form.descricao.trim() || undefined,
-        url: form.url.trim(),
+        file,
       });
       setVideos((prev) => [created, ...prev]);
-      setForm({ titulo: '', descricao: '', url: '' });
-      setMessage('Vídeo publicado.');
+      setForm({ titulo: '', descricao: '' });
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setMessage('Vídeo enviado e publicado.');
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -91,7 +94,7 @@ export function AdminVideosPage() {
           <h1>Vídeos</h1>
           <p>
             {professor
-              ? 'Publique vídeos com título, descrição e link para a equipe.'
+              ? 'Envie vídeos para o servidor (título, descrição e arquivo) e a equipe assiste no player.'
               : 'Assista aos vídeos publicados pelos professores.'}
           </p>
         </div>
@@ -129,21 +132,24 @@ export function AdminVideosPage() {
             />
           </div>
           <div>
-            <label className="label">Vídeo (URL)</label>
+            <label className="label">Vídeo</label>
             <input
+              ref={fileInputRef}
               className="input"
-              type="url"
-              value={form.url}
-              onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))}
-              placeholder="https://www.youtube.com/watch?v=..."
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime,video/*"
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+              }}
               required
             />
             <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              Cole o link do YouTube, Vimeo ou outro vídeo online.
+              Formatos: MP4, WebM ou MOV. Tamanho máximo: 200 MB.
+              {file ? ` Selecionado: ${file.name}` : ''}
             </p>
           </div>
           <button className="btn btn-primary" type="submit" disabled={saving}>
-            {saving ? 'Publicando...' : 'Publicar vídeo'}
+            {saving ? 'Enviando vídeo...' : 'Publicar vídeo'}
           </button>
         </form>
       ) : null}
@@ -156,7 +162,7 @@ export function AdminVideosPage() {
         ) : null}
 
         {videos.map((video) => {
-          const embed = toVideoEmbedUrl(video.url);
+          const src = resolveMediaUrl(video.url);
           return (
             <article key={video.id} className="card stack">
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
@@ -176,36 +182,20 @@ export function AdminVideosPage() {
                 ) : null}
               </div>
 
-              {embed ? (
-                <div
-                  style={{
-                    position: 'relative',
-                    width: '100%',
-                    paddingTop: '56.25%',
-                    overflow: 'hidden',
-                    borderRadius: 12,
-                    background: '#0f1419',
-                  }}
-                >
-                  <iframe
-                    title={video.titulo}
-                    src={embed}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      border: 0,
-                    }}
-                  />
-                </div>
-              ) : (
-                <a className="btn btn-secondary" href={video.url} target="_blank" rel="noreferrer">
-                  Abrir vídeo
-                </a>
-              )}
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                src={src}
+                style={{
+                  width: '100%',
+                  maxHeight: 480,
+                  borderRadius: 12,
+                  background: '#0f1419',
+                }}
+              >
+                Seu navegador não reproduz este vídeo.
+              </video>
             </article>
           );
         })}

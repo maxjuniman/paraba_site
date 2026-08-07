@@ -21,6 +21,13 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    // Evita application/json padrao; o boundary e definido automaticamente.
+    config.headers.delete?.('Content-Type');
+    if (!config.headers.delete) {
+      delete (config.headers as Record<string, unknown>)['Content-Type'];
+    }
+  }
   return config;
 });
 
