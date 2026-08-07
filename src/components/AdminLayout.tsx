@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Navigate, Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { canAccessAdmin, isProfessor } from '@/lib/session';
 import './AdminLayout.css';
@@ -99,14 +99,58 @@ function UserMenu() {
   );
 }
 
+function AdminNavLinks({
+  links,
+  onNavigate,
+}: {
+  links: typeof professorLinks | typeof alunoLinks;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className="admin-nav" aria-label="Menu do painel">
+      {links.map((link) => (
+        <NavLink
+          key={link.to}
+          to={link.to}
+          end={'end' in link ? link.end : false}
+          className={({ isActive }) => (isActive ? 'active' : '')}
+          onClick={onNavigate}
+        >
+          {link.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
 export function AdminLayout() {
   const { user } = useAuth();
+  const location = useLocation();
   const professor = isProfessor(user);
   const links = professor ? professorLinks : alunoLinks;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      <aside className="admin-sidebar admin-sidebar-desktop">
         <div className="admin-brand">
           <img src="/logo.png" alt="Equipe Paraba" />
           <div>
@@ -114,28 +158,73 @@ export function AdminLayout() {
             <span>{professor ? 'Painel admin' : 'Área do aluno'}</span>
           </div>
         </div>
-        <nav className="admin-nav">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={'end' in link ? link.end : false}
-              className={({ isActive }) => (isActive ? 'active' : '')}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-        </nav>
+        <AdminNavLinks links={links} />
       </aside>
+
       <div className="admin-content">
         <header className="admin-topbar">
+          <button
+            type="button"
+            className="admin-menu-toggle"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="admin-mobile-menu"
+            aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <span className="admin-menu-bars" aria-hidden="true">
+              <span className={mobileMenuOpen ? 'is-open' : undefined} />
+              <span className={mobileMenuOpen ? 'is-open' : undefined} />
+              <span className={mobileMenuOpen ? 'is-open' : undefined} />
+            </span>
+          </button>
+          <div className="admin-topbar-brand">
+            <img src="/logo.png" alt="" />
+            <strong>Equipe Paraba</strong>
+          </div>
           <div className="admin-topbar-spacer" />
           <UserMenu />
         </header>
+
         <main className="admin-main">
           <Outlet />
         </main>
       </div>
+
+      {mobileMenuOpen ? (
+        <div className="admin-mobile-overlay" role="presentation" onClick={() => setMobileMenuOpen(false)}>
+          <aside
+            id="admin-mobile-menu"
+            className="admin-mobile-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu de navegação"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="admin-mobile-drawer-header">
+              <div className="admin-brand">
+                <img src="/logo.png" alt="Equipe Paraba" />
+                <div>
+                  <strong>Equipe Paraba</strong>
+                  <span>{professor ? 'Painel admin' : 'Área do aluno'}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="admin-menu-toggle"
+                aria-label="Fechar menu"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="admin-menu-bars" aria-hidden="true">
+                  <span className="is-open" />
+                  <span className="is-open" />
+                  <span className="is-open" />
+                </span>
+              </button>
+            </div>
+            <AdminNavLinks links={links} onNavigate={() => setMobileMenuOpen(false)} />
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
