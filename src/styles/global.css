@@ -310,6 +310,36 @@ table.data td.actions .row {
   pointer-events: none;
 }
 
+.fighters-track {
+  animation-name: fighters-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.fighters-marquee:hover .fighters-track {
+  animation-play-state: paused;
+}
+
+@keyframes fighters-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fighters-track {
+    animation: none;
+  }
+
+  .fighters-marquee {
+    overflow-x: auto;
+  }
+}
+
 /* Landing motion (keyframes) */
 @keyframes hero-fade-up {
   from {

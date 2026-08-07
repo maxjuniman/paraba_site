@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 
 const PORTFOLIO_URL = 'https://max-juniman.vercel.app/';
@@ -15,6 +15,7 @@ type PublicAluno = {
   foto?: string | null;
   faixaAtual?: string | null;
   graus?: number | null;
+  isProfessor?: boolean;
 };
 
 type PublicDepoimento = {
@@ -93,6 +94,12 @@ function sortByFaixa(alunos: PublicAluno[]): PublicAluno[] {
   });
 }
 
+function sortEquipePublic(alunos: PublicAluno[]): PublicAluno[] {
+  const professors = alunos.filter((item) => item.isProfessor || item.id.startsWith('professor-'));
+  const rest = alunos.filter((item) => !item.isProfessor && !item.id.startsWith('professor-'));
+  return [...professors, ...sortByFaixa(rest)];
+}
+
 function beltColor(faixa?: string | null): string {
   if (!faixa) return '#6b7280';
   return BELT_COLORS[faixa.trim().toLowerCase()] ?? '#6b7280';
@@ -142,120 +149,21 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
 }
 
 function FightersMarquee({ alunos }: { alunos: PublicAluno[] }) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const pausedRef = useRef(false);
-  const resumeTimerRef = useRef<number | null>(null);
-  const dragRef = useRef<{ active: boolean; startX: number; scrollLeft: number }>({
-    active: false,
-    startX: 0,
-    scrollLeft: 0,
-  });
-
   const loopItems = useMemo(() => {
     if (alunos.length === 0) return [];
-    // Duplica o suficiente para o loop infinito parecer contínuo.
+    // Duplica para o loop infinito em CSS (translateX -50%).
     return [...alunos, ...alunos];
   }, [alunos]);
 
-  const pause = () => {
-    pausedRef.current = true;
-    if (resumeTimerRef.current != null) {
-      window.clearTimeout(resumeTimerRef.current);
-      resumeTimerRef.current = null;
-    }
-  };
+  const durationSec = Math.max(28, alunos.length * 4);
 
-  const scheduleResume = () => {
-    if (resumeTimerRef.current != null) window.clearTimeout(resumeTimerRef.current);
-    resumeTimerRef.current = window.setTimeout(() => {
-      pausedRef.current = false;
-      resumeTimerRef.current = null;
-    }, 2200);
-  };
-
-  const wrapScroll = (el: HTMLDivElement) => {
-    const half = el.scrollWidth / 2;
-    if (half <= 0) return;
-    if (el.scrollLeft >= half) el.scrollLeft -= half;
-    if (el.scrollLeft < 0) el.scrollLeft += half;
-  };
-
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el || alunos.length === 0) return;
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) return;
-
-    let raf = 0;
-    const speed = 0.45;
-
-    const tick = () => {
-      if (!pausedRef.current && !dragRef.current.active) {
-        el.scrollLeft += speed;
-        wrapScroll(el);
-      }
-      raf = window.requestAnimationFrame(tick);
-    };
-
-    raf = window.requestAnimationFrame(tick);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      if (resumeTimerRef.current != null) window.clearTimeout(resumeTimerRef.current);
-    };
-  }, [alunos.length]);
+  if (alunos.length === 0) return null;
 
   return (
     <div className="fighters-marquee overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]">
       <div
-        ref={scrollerRef}
-        className="fighters-scroller flex gap-[18px] overflow-x-auto overflow-y-hidden overscroll-x-contain pl-[18px] sm:gap-7 sm:pl-7"
-        onPointerDown={(event) => {
-          if (event.pointerType === 'touch') {
-            pause();
-            return;
-          }
-          const el = scrollerRef.current;
-          if (!el) return;
-          pause();
-          dragRef.current = { active: true, startX: event.clientX, scrollLeft: el.scrollLeft };
-          el.setPointerCapture(event.pointerId);
-          el.classList.add('is-dragging');
-        }}
-        onPointerMove={(event) => {
-          if (!dragRef.current.active) return;
-          const el = scrollerRef.current;
-          if (!el) return;
-          el.scrollLeft = dragRef.current.scrollLeft - (event.clientX - dragRef.current.startX);
-          wrapScroll(el);
-        }}
-        onPointerUp={(event) => {
-          if (dragRef.current.active) {
-            dragRef.current.active = false;
-            const el = scrollerRef.current;
-            el?.classList.remove('is-dragging');
-            try {
-              el?.releasePointerCapture(event.pointerId);
-            } catch {
-              // ignore
-            }
-          }
-          scheduleResume();
-        }}
-        onPointerCancel={() => {
-          dragRef.current.active = false;
-          scrollerRef.current?.classList.remove('is-dragging');
-          scheduleResume();
-        }}
-        onTouchStart={pause}
-        onTouchEnd={scheduleResume}
-        onWheel={() => {
-          pause();
-          scheduleResume();
-        }}
-        onScroll={(event) => {
-          wrapScroll(event.currentTarget);
-        }}
+        className="fighters-track flex w-max gap-[18px] pl-[18px] sm:gap-7 sm:pl-7"
+        style={{ animationDuration: `${durationSec}s` }}
       >
         {loopItems.map((aluno, index) => (
           <FighterCard key={`${aluno.id}-${index}`} aluno={aluno} />
@@ -397,7 +305,7 @@ export function LandingPage() {
         if (equipeRes.ok) {
           const json = (await equipeRes.json()) as { data?: PublicAluno[] } | PublicAluno[];
           const list = Array.isArray(json) ? json : json.data ?? [];
-          setAlunos(sortByFaixa(list));
+          setAlunos(sortEquipePublic(list));
         }
 
         if (depoRes.ok) {
