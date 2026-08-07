@@ -22,6 +22,7 @@ type PublicDepoimento = {
   nome: string;
   texto: string;
   faixa?: string | null;
+  foto?: string | null;
   ordem?: number;
 };
 
@@ -309,8 +310,20 @@ function TestimonialsSlider({ items }: { items: PublicDepoimento[] }) {
         </p>
       </blockquote>
 
-      <div className="mt-10 flex h-14 w-14 items-center justify-center rounded-full bg-[#2a2f36] text-xl font-extrabold text-white">
-        {initialFromName(current.nome)}
+      <div className="mt-10 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#2a2f36] text-xl font-extrabold text-white">
+        {current.foto ? (
+          <img
+            src={current.foto}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+              const sibling = event.currentTarget.nextElementSibling as HTMLElement | null;
+              if (sibling) sibling.hidden = false;
+            }}
+          />
+        ) : null}
+        <span hidden={Boolean(current.foto)}>{initialFromName(current.nome)}</span>
       </div>
       <cite className="mt-4 text-sm font-extrabold tracking-[0.14em] text-white uppercase not-italic">
         {current.nome}

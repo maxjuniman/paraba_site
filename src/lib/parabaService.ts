@@ -237,10 +237,10 @@ export const parabaService = {
     return data?.data ?? null;
   },
 
-  async salvarMeuDepoimento(texto: string): Promise<DepoimentoAdmin> {
-    const { data } = await api.put<{ data?: DepoimentoAdmin } | DepoimentoAdmin>('/depoimentos/me', {
-      texto,
-    });
+  async salvarMeuDepoimento(texto: string, foto?: string | null): Promise<DepoimentoAdmin> {
+    const body: { texto: string; foto?: string | null } = { texto };
+    if (foto !== undefined) body.foto = foto;
+    const { data } = await api.put<{ data?: DepoimentoAdmin } | DepoimentoAdmin>('/depoimentos/me', body);
     return unwrapData<DepoimentoAdmin>(data);
   },
 
@@ -261,7 +261,14 @@ export const parabaService = {
 
   async atualizarDepoimento(
     id: string,
-    body: Partial<{ nome: string; texto: string; faixa: string | null; ativo: boolean; ordem: number }>
+    body: Partial<{
+      nome: string;
+      texto: string;
+      faixa: string | null;
+      foto: string | null;
+      ativo: boolean;
+      ordem: number;
+    }>
   ): Promise<DepoimentoAdmin> {
     const { data } = await api.patch<{ data?: DepoimentoAdmin } | DepoimentoAdmin>(
       `/depoimentos/${id}`,
