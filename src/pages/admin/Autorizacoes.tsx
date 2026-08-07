@@ -4,11 +4,13 @@ import { brDateToIso, formatDate, formatPhone, isValidBrazilMobile } from '@/lib
 import { parabaService } from '@/lib/parabaService';
 import type { Aluno, PendingUser } from '@/lib/types';
 
+const MAX_ALUNOS = 2;
+
 export function AdminAutorizacoesPage() {
   const [pending, setPending] = useState<PendingUser[]>([]);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedAlunoId, setSelectedAlunoId] = useState('');
+  const [selectedAlunoIds, setSelectedAlunoIds] = useState<string[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -51,17 +53,31 @@ export function AdminAutorizacoesPage() {
     [alunos]
   );
 
+  const toggleAluno = (alunoId: string) => {
+    setSelectedAlunoIds((current) => {
+      if (current.includes(alunoId)) {
+        return current.filter((id) => id !== alunoId);
+      }
+      if (current.length >= MAX_ALUNOS) {
+        return current;
+      }
+      return [...current, alunoId];
+    });
+  };
+
   const authorizeExisting = async () => {
-    if (!selectedUserId || !selectedAlunoId) {
-      setError('Selecione o cadastro pendente e o aluno.');
+    if (!selectedUserId || selectedAlunoIds.length === 0) {
+      setError('Selecione o cadastro pendente e 1 ou 2 alunos.');
       return;
     }
     try {
       setSaving(true);
       setError('');
-      await parabaService.autorizarUsuario(selectedUserId, { aluno_id: selectedAlunoId });
+      for (const alunoId of selectedAlunoIds) {
+        await parabaService.autorizarUsuario(selectedUserId, { aluno_id: alunoId });
+      }
       setSelectedUserId('');
-      setSelectedAlunoId('');
+      setSelectedAlunoIds([]);
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -97,6 +113,7 @@ export function AdminAutorizacoesPage() {
       });
       setShowNew(false);
       setSelectedUserId('');
+      setSelectedAlunoIds([]);
       setNewAluno({
         nome: '',
         apelido: '',
@@ -119,7 +136,7 @@ export function AdminAutorizacoesPage() {
       <header className="admin-header">
         <div>
           <h1>Autorizações</h1>
-          <p>Vincule cadastros pendentes do app a um aluno.</p>
+          <p>Vincule cadastros pendentes do app a até 2 alunos.</p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={() => void load()}>
           Atualizar
@@ -147,26 +164,39 @@ export function AdminAutorizacoesPage() {
       </div>
 
       <div className="card stack">
-        <h2 style={{ margin: 0 }}>Aluno sem vínculo</h2>
+        <h2 style={{ margin: 0 }}>Alunos sem vínculo</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          Clique em 1 ou 2 alunos ({selectedAlunoIds.length}/{MAX_ALUNOS} selecionados).
+        </p>
         <div className="row">
-          {semVinculo.map((aluno) => (
-            <button
-              key={aluno.id}
-              type="button"
-              className={`chip ${selectedAlunoId === aluno.id ? 'active' : ''}`}
-              onClick={() => setSelectedAlunoId(aluno.id)}
-            >
-              {aluno.apelido ? `${aluno.nome} (${aluno.apelido})` : aluno.nome}
-            </button>
-          ))}
+          {semVinculo.map((aluno) => {
+            const selected = selectedAlunoIds.includes(aluno.id);
+            const blocked = !selected && selectedAlunoIds.length >= MAX_ALUNOS;
+            return (
+              <button
+                key={aluno.id}
+                type="button"
+                className={`chip ${selected ? 'active' : ''}`}
+                disabled={blocked}
+                onClick={() => toggleAluno(aluno.id)}
+                style={blocked ? { opacity: 0.45 } : undefined}
+              >
+                {aluno.apelido ? `${aluno.nome} (${aluno.apelido})` : aluno.nome}
+              </button>
+            );
+          })}
         </div>
         <button
           type="button"
           className="btn btn-primary"
-          disabled={saving || !selectedUserId || !selectedAlunoId}
+          disabled={saving || !selectedUserId || selectedAlunoIds.length === 0}
           onClick={() => void authorizeExisting()}
         >
-          Autorizar vínculo
+          {saving
+            ? 'Autorizando...'
+            : selectedAlunoIds.length > 1
+              ? `Autorizar vínculo (${selectedAlunoIds.length} alunos)`
+              : 'Autorizar vínculo'}
         </button>
       </div>
 

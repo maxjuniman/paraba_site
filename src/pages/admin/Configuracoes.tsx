@@ -1,13 +1,15 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiErrorMessage } from '@/lib/api';
 import { formatPhone, normalizePhoneWithBrazilCode } from '@/lib/formatters';
 import { useAuth } from '@/lib/AuthContext';
 import { parabaService } from '@/lib/parabaService';
-import { isProfessor } from '@/lib/session';
+import { isAluno, isProfessor } from '@/lib/session';
+import type { Aluno, UsuarioAtivoComVinculos, VinculoAlunoResumo } from '@/lib/types';
 
 export function AdminConfiguracoesPage() {
   const { user, setUser, logout } = useAuth();
   const professor = isProfessor(user);
+  const aluno = isAluno(user);
   const [nome, setNome] = useState(user?.nome ?? '');
   const [celular, setCelular] = useState(user?.celular ? formatPhone(user.celular) : '');
   const [senhaAtual, setSenhaAtual] = useState('');
@@ -25,6 +27,81 @@ export function AdminConfiguracoesPage() {
     confirmacao_senha: '',
   });
   const [savingProf, setSavingProf] = useState(false);
+
+  const [usuariosAtivos, setUsuariosAtivos] = useState<UsuarioAtivoComVinculos[]>([]);
+  const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedAlunoId, setSelectedAlunoId] = useState('');
+  const [vinculados, setVinculados] = useState<VinculoAlunoResumo[]>([]);
+  const [alunoPrimarioId, setAlunoPrimarioId] = useState<string | null>(null);
+  const [maxAlunos, setMaxAlunos] = useState(2);
+  const [loadingVinculos, setLoadingVinculos] = useState(false);
+  const [savingVinculo, setSavingVinculo] = useState(false);
+
+  const [meusVinculos, setMeusVinculos] = useState<VinculoAlunoResumo[]>([]);
+  const [meuPrimarioId, setMeuPrimarioId] = useState<string | null>(null);
+
+  const loadProfessorVinculos = useCallback(async () => {
+    if (!professor) return;
+    try {
+      setLoadingVinculos(true);
+      const [users, list] = await Promise.all([
+        parabaService.listarUsuariosAtivos(),
+        parabaService.listarAlunos(),
+      ]);
+      setUsuariosAtivos(users);
+      setAlunos(list);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setLoadingVinculos(false);
+    }
+  }, [professor]);
+
+  const loadMeusVinculos = useCallback(async () => {
+    if (!aluno) return;
+    try {
+      const detail = await parabaService.listarMeusAlunosVinculados();
+      setMeusVinculos(detail.alunos);
+      setMeuPrimarioId(detail.alunoPrimarioId);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    }
+  }, [aluno]);
+
+  useEffect(() => {
+    void loadProfessorVinculos();
+  }, [loadProfessorVinculos]);
+
+  useEffect(() => {
+    void loadMeusVinculos();
+  }, [loadMeusVinculos]);
+
+  useEffect(() => {
+    if (!selectedUserId) {
+      setVinculados([]);
+      setAlunoPrimarioId(null);
+      return;
+    }
+    void (async () => {
+      try {
+        const detail = await parabaService.listarAlunosDoUsuario(selectedUserId);
+        setVinculados(detail.alunos);
+        setAlunoPrimarioId(detail.alunoPrimarioId);
+        setMaxAlunos(detail.maxAlunos);
+      } catch (err) {
+        setError(apiErrorMessage(err));
+      }
+    })();
+  }, [selectedUserId]);
+
+  const semVinculo = useMemo(
+    () =>
+      alunos
+        .filter((item) => !item.userId && item.ativo !== false)
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [alunos]
+  );
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
@@ -82,12 +159,90 @@ export function AdminConfiguracoesPage() {
     }
   };
 
+  const vincular = async () => {
+    if (!selectedUserId || !selectedAlunoId) {
+      setError('Selecione o usuario e o aluno para vincular.');
+      return;
+    }
+    try {
+      setSavingVinculo(true);
+      setError('');
+      await parabaService.vincularAlunoUser(selectedAlunoId, selectedUserId);
+      setSelectedAlunoId('');
+      setMessage('Aluno vinculado ao usuario.');
+      await loadProfessorVinculos();
+      const detail = await parabaService.listarAlunosDoUsuario(selectedUserId);
+      setVinculados(detail.alunos);
+      setAlunoPrimarioId(detail.alunoPrimarioId);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSavingVinculo(false);
+    }
+  };
+
+  const desvincular = async (alunoId: string) => {
+    try {
+      setSavingVinculo(true);
+      setError('');
+      await parabaService.desvincularAlunoUser(alunoId);
+      setMessage('Vinculo removido.');
+      await loadProfessorVinculos();
+      if (selectedUserId) {
+        const detail = await parabaService.listarAlunosDoUsuario(selectedUserId);
+        setVinculados(detail.alunos);
+        setAlunoPrimarioId(detail.alunoPrimarioId);
+      }
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSavingVinculo(false);
+    }
+  };
+
+  const setPrimario = async (alunoId: string) => {
+    if (!selectedUserId) return;
+    try {
+      setSavingVinculo(true);
+      setError('');
+      const detail = await parabaService.definirAlunoPrimario(selectedUserId, alunoId);
+      setVinculados(detail.alunos);
+      setAlunoPrimarioId(detail.alunoPrimarioId);
+      setMessage('Aluno primario atualizado.');
+      await loadProfessorVinculos();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSavingVinculo(false);
+    }
+  };
+
+  const setMeuPrimario = async (alunoId: string) => {
+    try {
+      setSavingVinculo(true);
+      setError('');
+      const detail = await parabaService.definirMeuAlunoPrimario(alunoId);
+      setMeusVinculos(detail.alunos);
+      setMeuPrimarioId(detail.alunoPrimarioId);
+      if (detail.user) setUser(detail.user);
+      setMessage('Aluno primario atualizado.');
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSavingVinculo(false);
+    }
+  };
+
   return (
     <div className="stack">
       <header className="admin-header">
         <div>
           <h1>Configurações</h1>
-          <p>{professor ? 'Perfil do professor e criação de novas contas.' : 'Edite seu cadastro e senha.'}</p>
+          <p>
+            {professor
+              ? 'Perfil, vínculos usuário ↔ alunos e criação de contas.'
+              : 'Edite seu cadastro, senha e alunos vinculados.'}
+          </p>
         </div>
         <button type="button" className="btn btn-ghost" onClick={logout}>
           Sair
@@ -145,6 +300,134 @@ export function AdminConfiguracoesPage() {
           {saving ? 'Salvando...' : 'Salvar alterações'}
         </button>
       </form>
+
+      {aluno ? (
+        <section className="card stack">
+          <h2 style={{ margin: 0 }}>Alunos vinculados</h2>
+          <p style={{ margin: 0, opacity: 0.8 }}>
+            Sua conta pode estar ligada a até 2 alunos. O aluno primário é usado na home e no pagamento.
+          </p>
+          {meusVinculos.length === 0 ? (
+            <p style={{ margin: 0 }}>Nenhum aluno vinculado à sua conta.</p>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {meusVinculos.map((item) => (
+                <li key={item.id} style={{ marginBottom: 8 }}>
+                  <strong>{item.nome}</strong>
+                  {meuPrimarioId === item.id ? ' · primário' : ''}
+                  {meusVinculos.length > 1 && meuPrimarioId !== item.id ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={savingVinculo}
+                        onClick={() => void setMeuPrimario(item.id)}
+                      >
+                        Definir como primário
+                      </button>
+                    </>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
+      {professor ? (
+        <section className="card stack">
+          <h2 style={{ margin: 0 }}>Vínculos usuário ↔ alunos</h2>
+          <p style={{ margin: 0, opacity: 0.8 }}>
+            Cada usuário aluno pode ter até {maxAlunos} cadastros de aluno (ex.: dois filhos na mesma conta).
+          </p>
+
+          <div>
+            <label className="label">Usuário</label>
+            <select
+              className="input"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              disabled={loadingVinculos}
+            >
+              <option value="">Selecione um usuário ativo</option>
+              {usuariosAtivos.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nome} ({item.email}) — {item.alunosCount}/{item.maxAlunos}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedUserId ? (
+            <>
+              <div>
+                <h3 style={{ margin: '4px 0' }}>Alunos vinculados ({vinculados.length}/{maxAlunos})</h3>
+                {vinculados.length === 0 ? (
+                  <p style={{ margin: 0 }}>Nenhum aluno vinculado.</p>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {vinculados.map((item) => (
+                      <li key={item.id} style={{ marginBottom: 10 }}>
+                        <strong>{item.nome}</strong>
+                        {alunoPrimarioId === item.id ? ' · primário' : ''}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                          {alunoPrimarioId !== item.id ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              disabled={savingVinculo}
+                              onClick={() => void setPrimario(item.id)}
+                            >
+                              Primário
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            disabled={savingVinculo}
+                            onClick={() => void desvincular(item.id)}
+                          >
+                            Desvincular
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {vinculados.length < maxAlunos ? (
+                <div className="stack" style={{ gap: 8 }}>
+                  <label className="label">Vincular outro aluno</label>
+                  <select
+                    className="input"
+                    value={selectedAlunoId}
+                    onChange={(e) => setSelectedAlunoId(e.target.value)}
+                  >
+                    <option value="">Aluno sem usuário</option>
+                    {semVinculo.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={savingVinculo || !selectedAlunoId}
+                    onClick={() => void vincular()}
+                  >
+                    {savingVinculo ? 'Salvando...' : 'Vincular aluno'}
+                  </button>
+                </div>
+              ) : (
+                <p style={{ margin: 0, opacity: 0.8 }}>Limite de {maxAlunos} alunos atingido para este usuário.</p>
+              )}
+            </>
+          ) : null}
+        </section>
+      ) : null}
 
       {professor ? (
         <form className="card stack" onSubmit={saveProfessor}>

@@ -135,6 +135,19 @@
   color: #fff;
 }
 
+.btn-icon {
+  min-height: 40px;
+  width: 40px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .confirm-overlay {
   position: fixed;
   inset: 0;
@@ -255,6 +268,20 @@ table.data th {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+table.data th.actions,
+table.data td.actions {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+
+table.data td.actions .row {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 6px;
 }
 
 .empty {

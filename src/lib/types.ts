@@ -54,6 +54,29 @@ export type Aluno = {
 
 export type PendingUser = SessionUser & { ativo: boolean };
 
+export type VinculoAlunoResumo = {
+  id: string;
+  nome: string;
+  apelido?: string | null;
+  celular?: string;
+  ativo?: boolean;
+  faixaAtual?: string | null;
+  primario?: boolean;
+};
+
+export type UsuarioAtivoComVinculos = PendingUser & {
+  alunos: VinculoAlunoResumo[];
+  alunosCount: number;
+  maxAlunos: number;
+};
+
+export type VinculosUsuario = {
+  user: PendingUser;
+  alunos: VinculoAlunoResumo[];
+  alunoPrimarioId: string | null;
+  maxAlunos: number;
+};
+
 export type AulaCategoria = 'kids' | 'juvenil' | 'adulto';
 export type AulaRecorrencia = 'avulsa' | 'recorrente';
 
