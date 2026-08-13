@@ -5,12 +5,19 @@ import { apiErrorMessage } from '@/lib/api';
 import { isoToBrDate } from '@/lib/formatters';
 import { parabaService } from '@/lib/parabaService';
 import { getStudentCategoryByBirthDate, STUDENT_CATEGORY_FILTERS, type StudentCategoryId } from '@/lib/studentCategories';
-import type { Aluno } from '@/lib/types';
+import type { Aluno, TipoAula } from '@/lib/types';
 
 type PendingToggle = {
   aluno: Aluno;
   nextAtivo: boolean;
 };
+
+function tiposAulaLabel(aluno: Aluno): string {
+  if (aluno.tiposAula?.length) {
+    return aluno.tiposAula.map((tipo) => tipo.nome).join(', ');
+  }
+  return '—';
+}
 
 function IconEdit() {
   return (
@@ -62,10 +69,12 @@ function IconKey() {
 
 export function AdminAlunosPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [tipos, setTipos] = useState<TipoAula[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<StudentCategoryId>('all');
+  const [tipoAulaFilter, setTipoAulaFilter] = useState<string>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Aluno | null>(null);
@@ -77,7 +86,12 @@ export function AdminAlunosPage() {
   const load = async () => {
     try {
       setLoading(true);
-      setAlunos(await parabaService.listarAlunos());
+      const [list, tiposAula] = await Promise.all([
+        parabaService.listarAlunos(),
+        parabaService.listarTiposAula(),
+      ]);
+      setAlunos(list);
+      setTipos(tiposAula);
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -101,7 +115,13 @@ export function AdminAlunosPage() {
           (aluno.apelido ?? '').toLowerCase().includes(q);
         const category = getStudentCategoryByBirthDate(aluno.dataNascimento);
         const matchesCategory = categoryFilter === 'all' || category?.id === categoryFilter;
-        return matchesName && matchesCategory;
+        const alunoTipoIds = aluno.tiposAulaIds ?? aluno.tiposAula?.map((tipo) => tipo.id) ?? [];
+        const matchesTipo =
+          tipoAulaFilter === 'all' ||
+          (tipoAulaFilter === 'none'
+            ? alunoTipoIds.length === 0
+            : alunoTipoIds.includes(tipoAulaFilter));
+        return matchesName && matchesCategory && matchesTipo;
       })
       .sort((a, b) => {
         const aActive = a.ativo !== false ? 0 : 1;
@@ -109,7 +129,7 @@ export function AdminAlunosPage() {
         if (aActive !== bActive) return aActive - bActive;
         return a.nome.localeCompare(b.nome, 'pt-BR');
       });
-  }, [alunos, categoryFilter, nameFilter]);
+  }, [alunos, categoryFilter, nameFilter, tipoAulaFilter]);
 
   const confirmToggleAtivo = async () => {
     if (!pendingToggle) return;
@@ -218,6 +238,7 @@ export function AdminAlunosPage() {
           value={nameFilter}
           onChange={(e) => setNameFilter(e.target.value)}
         />
+        <strong style={{ fontSize: 14 }}>Filtrar por categoria</strong>
         <div className="row">
           {STUDENT_CATEGORY_FILTERS.map((category) => (
             <button
@@ -230,6 +251,39 @@ export function AdminAlunosPage() {
             </button>
           ))}
         </div>
+        <strong style={{ fontSize: 14 }}>Filtrar por tipo de aula</strong>
+        {tipos.length > 0 ? (
+          <div className="row">
+            <button
+              type="button"
+              className={`chip ${tipoAulaFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setTipoAulaFilter('all')}
+            >
+              Todas as aulas
+            </button>
+            {tipos.map((tipo) => (
+              <button
+                key={tipo.id}
+                type="button"
+                className={`chip ${tipoAulaFilter === tipo.id ? 'active' : ''}`}
+                onClick={() => setTipoAulaFilter(tipo.id)}
+              >
+                {tipo.nome}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`chip ${tipoAulaFilter === 'none' ? 'active' : ''}`}
+              onClick={() => setTipoAulaFilter('none')}
+            >
+              Sem tipo
+            </button>
+          </div>
+        ) : (
+          <p className="muted" style={{ margin: 0 }}>
+            Nenhum tipo de aula cadastrado no calendário.
+          </p>
+        )}
       </div>
 
       <div className="card table-wrap">
@@ -241,6 +295,7 @@ export function AdminAlunosPage() {
               <tr>
                 <th>Aluno</th>
                 <th>Categoria</th>
+                <th>Tipo de aula</th>
                 <th>Celular</th>
                 <th>Status</th>
                 <th>App</th>
@@ -262,6 +317,7 @@ export function AdminAlunosPage() {
                       </div>
                     </td>
                     <td>{category?.label ?? '—'}</td>
+                    <td>{tiposAulaLabel(aluno)}</td>
                     <td>{aluno.celular || '—'}</td>
                     <td>{active ? 'Ativo' : 'Inativo'}</td>
                     <td>{aluno.userId ? 'Vinculado' : 'Sem usuário'}</td>
