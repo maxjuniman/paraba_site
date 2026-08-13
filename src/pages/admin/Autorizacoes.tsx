@@ -2,38 +2,44 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiErrorMessage } from '@/lib/api';
 import { brDateToIso, formatDate, formatPhone, isValidBrazilMobile } from '@/lib/formatters';
 import { parabaService } from '@/lib/parabaService';
-import type { Aluno, PendingUser } from '@/lib/types';
+import type { Aluno, PendingUser, TipoAula } from '@/lib/types';
 
 const MAX_ALUNOS = 2;
+
+const emptyNewAluno = {
+  nome: '',
+  apelido: '',
+  nomeResponsavel: '',
+  emailResponsavel: '',
+  celular: '',
+  dataNascimento: '',
+  dataPagamento: '',
+  tiposAulaIds: [] as string[],
+};
 
 export function AdminAutorizacoesPage() {
   const [pending, setPending] = useState<PendingUser[]>([]);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [tipos, setTipos] = useState<TipoAula[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedAlunoIds, setSelectedAlunoIds] = useState<string[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [newAluno, setNewAluno] = useState({
-    nome: '',
-    apelido: '',
-    nomeResponsavel: '',
-    emailResponsavel: '',
-    celular: '',
-    dataNascimento: '',
-    dataPagamento: '',
-  });
+  const [newAluno, setNewAluno] = useState(emptyNewAluno);
 
   const load = async () => {
     try {
       setLoading(true);
-      const [users, list] = await Promise.all([
+      const [users, list, tiposAula] = await Promise.all([
         parabaService.listarUsuariosPendentes(),
         parabaService.listarAlunos(),
+        parabaService.listarTiposAula(),
       ]);
       setPending(users);
       setAlunos(list);
+      setTipos(tiposAula);
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -63,6 +69,15 @@ export function AdminAutorizacoesPage() {
       }
       return [...current, alunoId];
     });
+  };
+
+  const toggleTipo = (tipoId: string) => {
+    setNewAluno((previous) => ({
+      ...previous,
+      tiposAulaIds: previous.tiposAulaIds.includes(tipoId)
+        ? previous.tiposAulaIds.filter((item) => item !== tipoId)
+        : [...previous.tiposAulaIds, tipoId],
+    }));
   };
 
   const authorizeExisting = async () => {
@@ -97,6 +112,10 @@ export function AdminAutorizacoesPage() {
       setError('Preencha nome, celular com DDD e nascimento.');
       return;
     }
+    if (newAluno.tiposAulaIds.length === 0) {
+      setError('Selecione ao menos um tipo de aula.');
+      return;
+    }
     try {
       setSaving(true);
       setError('');
@@ -109,20 +128,13 @@ export function AdminAutorizacoesPage() {
           celular: newAluno.celular.trim(),
           dataNascimento,
           dataPagamento: newAluno.dataPagamento.replace(/\D/g, '').slice(0, 2) || undefined,
+          tiposAulaIds: newAluno.tiposAulaIds,
         },
       });
       setShowNew(false);
       setSelectedUserId('');
       setSelectedAlunoIds([]);
-      setNewAluno({
-        nome: '',
-        apelido: '',
-        nomeResponsavel: '',
-        emailResponsavel: '',
-        celular: '',
-        dataNascimento: '',
-        dataPagamento: '',
-      });
+      setNewAluno(emptyNewAluno);
       await load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -240,6 +252,27 @@ export function AdminAutorizacoesPage() {
             onChange={(e) => setNewAluno((p) => ({ ...p, dataNascimento: formatDate(e.target.value) }))}
             required
           />
+          <div>
+            <label className="label">Tipo de aula</label>
+            {tipos.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                Nenhum tipo cadastrado. Crie um tipo em Calendário.
+              </p>
+            ) : (
+              <div className="row">
+                {tipos.map((tipo) => (
+                  <button
+                    key={tipo.id}
+                    type="button"
+                    className={`chip ${newAluno.tiposAulaIds.includes(tipo.id) ? 'active' : ''}`}
+                    onClick={() => toggleTipo(tipo.id)}
+                  >
+                    {tipo.nome}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button className="btn btn-primary" type="submit" disabled={saving || !selectedUserId}>
             Cadastrar e autorizar
           </button>
