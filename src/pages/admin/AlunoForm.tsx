@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiErrorMessage } from '@/lib/api';
 import { brDateToIso, formatDate, formatPhone, isValidBrazilMobile, isoToBrDate } from '@/lib/formatters';
 import { parabaService } from '@/lib/parabaService';
+import type { TipoAula } from '@/lib/types';
 
 const FAIXAS = ['Branca', 'Cinza', 'Amarela', 'Laranja', 'Verde', 'Azul', 'Roxa', 'Marrom', 'Preta'];
 const GRAUS = [0, 1, 2, 3, 4];
@@ -17,6 +18,7 @@ const emptyForm = {
   dataPagamento: '',
   faixaAtual: '',
   graus: 0,
+  tiposAulaIds: [] as string[],
 };
 
 export function AdminAlunoFormPage() {
@@ -24,16 +26,21 @@ export function AdminAlunoFormPage() {
   const isEditing = Boolean(id);
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
+  const [tipos, setTipos] = useState<TipoAula[]>([]);
   const [userEmail, setUserEmail] = useState('');
-  const [loading, setLoading] = useState(isEditing);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!id) return;
     void (async () => {
       try {
         setLoading(true);
+        const tiposAula = await parabaService.listarTiposAula();
+        setTipos(tiposAula);
+
+        if (!id) return;
+
         const alunos = await parabaService.listarAlunos();
         const aluno = alunos.find((item) => item.id === id);
         if (!aluno) {
@@ -52,6 +59,7 @@ export function AdminAlunoFormPage() {
           dataPagamento: aluno.dataPagamento ?? '',
           faixaAtual: aluno.faixaAtual ?? '',
           graus: aluno.graus ?? 0,
+          tiposAulaIds: aluno.tiposAulaIds ?? aluno.tiposAula?.map((tipo) => tipo.id) ?? [],
         });
       } catch (err) {
         setError(apiErrorMessage(err));
@@ -60,6 +68,15 @@ export function AdminAlunoFormPage() {
       }
     })();
   }, [id]);
+
+  const toggleTipo = (tipoId: string) => {
+    setForm((previous) => ({
+      ...previous,
+      tiposAulaIds: previous.tiposAulaIds.includes(tipoId)
+        ? previous.tiposAulaIds.filter((item) => item !== tipoId)
+        : [...previous.tiposAulaIds, tipoId],
+    }));
+  };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -76,6 +93,10 @@ export function AdminAlunoFormPage() {
     }
     if (!isValidBrazilMobile(form.celular)) {
       setError('Informe um celular valido com DDD.');
+      return;
+    }
+    if (form.tiposAulaIds.length === 0) {
+      setError('Selecione ao menos um tipo de aula.');
       return;
     }
 
@@ -100,6 +121,7 @@ export function AdminAlunoFormPage() {
         dataPagamento: dataPagamento || undefined,
         faixaAtual: form.faixaAtual || undefined,
         graus: form.graus,
+        tiposAulaIds: form.tiposAulaIds,
       };
       if (id) await parabaService.atualizarAluno(id, body);
       else await parabaService.cadastrarAluno(body);
@@ -199,6 +221,27 @@ export function AdminAlunoFormPage() {
                 placeholder="1 a 31"
               />
             </div>
+          </div>
+          <div>
+            <label className="label">Tipo de aula</label>
+            {tipos.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                Nenhum tipo cadastrado. Crie um tipo em Calendário antes de salvar o aluno.
+              </p>
+            ) : (
+              <div className="row">
+                {tipos.map((tipo) => (
+                  <button
+                    key={tipo.id}
+                    type="button"
+                    className={`chip ${form.tiposAulaIds.includes(tipo.id) ? 'active' : ''}`}
+                    onClick={() => toggleTipo(tipo.id)}
+                  >
+                    {tipo.nome}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="label">Faixa</label>

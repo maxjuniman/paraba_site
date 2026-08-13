@@ -29,6 +29,7 @@ export type AlunoBody = {
   dataPagamento?: string;
   faixaAtual?: string;
   graus?: number;
+  tiposAulaIds: string[];
 };
 
 export type Aluno = {
@@ -46,6 +47,8 @@ export type Aluno = {
   pagamentosPagos?: string[] | null;
   faixaAtual?: string | null;
   graus?: number | null;
+  tiposAulaIds?: string[];
+  tiposAula?: { id: string; nome: string }[] | null;
   ativo?: boolean;
   userId?: string | null;
   user?: Pick<SessionUser, 'id' | 'nome' | 'email' | 'ativo'> | null;
