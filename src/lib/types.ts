@@ -112,7 +112,7 @@ export type AulaCalendarioMes = {
   id: string;
   data: string;
   hora: string;
-  tipoAulaNome: string;
+  tipoAula: { id: string; nome: string };
   categorias: AulaCategoria[];
   recorrencia: AulaRecorrencia;
   totalPresentes?: number;

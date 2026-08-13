@@ -254,7 +254,7 @@ export function AdminCalendarioPage() {
                 <tr key={`${aula.id}-${aula.data}-${aula.hora}`}>
                   <td>{aula.data.split('-').reverse().join('/')}</td>
                   <td>{aula.hora}</td>
-                  <td>{aula.tipoAulaNome}</td>
+                  <td>{aula.tipoAula?.nome || '—'}</td>
                   <td>{aula.categorias?.join(', ') || 'Todas'}</td>
                   {professor ? <td>{aula.totalPresentes ?? 0}</td> : null}
                 </tr>
