@@ -11,9 +11,46 @@ import {
 } from '@/lib/paymentStatus';
 import { parabaService } from '@/lib/parabaService';
 import { isProfessor } from '@/lib/session';
-import type { Aluno, EquipeAluno, MeuAluno, PendingUser } from '@/lib/types';
+import type { Aluno, EquipeAluno, MeuAluno, PendingUser, TipoAula } from '@/lib/types';
 
 type Birthday = { id: string; nome: string; dia: number; idade: number };
+
+type ContagemTipoAula = {
+  id: string;
+  nome: string;
+  total: number;
+};
+
+function contagemPorTipoAula(alunos: Aluno[], tipos: TipoAula[]): ContagemTipoAula[] {
+  const counts = new Map<string, number>();
+  for (const aluno of alunos) {
+    const ids = aluno.tiposAulaIds ?? aluno.tiposAula?.map((tipo) => tipo.id) ?? [];
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) {
+      counts.set('__none__', (counts.get('__none__') ?? 0) + 1);
+      continue;
+    }
+    for (const id of unique) {
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+  }
+
+  const rows: ContagemTipoAula[] = tipos
+    .map((tipo) => ({
+      id: tipo.id,
+      nome: tipo.nome,
+      total: counts.get(tipo.id) ?? 0,
+    }))
+    .filter((item) => item.total > 0)
+    .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  const semTipo = counts.get('__none__') ?? 0;
+  if (semTipo > 0) {
+    rows.push({ id: '__none__', nome: 'Sem tipo', total: semTipo });
+  }
+
+  return rows;
+}
 
 function monthlyBirthdays(
   alunos: Array<Pick<Aluno | EquipeAluno, 'id' | 'nome' | 'apelido' | 'dataNascimento'>>
@@ -42,6 +79,7 @@ export function AdminHomePage() {
   const [pending, setPending] = useState<PendingUser[]>([]);
   const [pendingDepoimentos, setPendingDepoimentos] = useState(0);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [tipos, setTipos] = useState<TipoAula[]>([]);
   const [equipe, setEquipe] = useState<EquipeAluno[]>([]);
   const [meuPagamento, setMeuPagamento] = useState<MeuAluno | null>(null);
   const [error, setError] = useState('');
@@ -53,14 +91,16 @@ export function AdminHomePage() {
         setLoading(true);
         setError('');
         if (professor) {
-          const [pendentes, list, depoimentos] = await Promise.all([
+          const [pendentes, list, tiposAula, depoimentos] = await Promise.all([
             parabaService.listarUsuariosPendentes(),
             parabaService.listarAlunos(),
+            parabaService.listarTiposAula(),
             parabaService.listarDepoimentos(),
           ]);
           setPending(pendentes);
           setPendingDepoimentos(depoimentos.filter((item) => !item.ativo).length);
           setAlunos(list.filter((aluno) => aluno.ativo !== false));
+          setTipos(tiposAula);
           setEquipe([]);
           setMeuPagamento(null);
         } else {
@@ -73,6 +113,7 @@ export function AdminHomePage() {
           setMeuPagamento(meuAluno);
           setPending([]);
           setAlunos([]);
+          setTipos([]);
         }
       } catch (err) {
         setError(apiErrorMessage(err));
@@ -87,6 +128,7 @@ export function AdminHomePage() {
     [professor, alunos, equipe]
   );
   const activeCount = alunos.length;
+  const porTipo = useMemo(() => contagemPorTipoAula(alunos, tipos), [alunos, tipos]);
   const paymentReference = currentPaymentReference();
   const meuStatus = meuPagamento ? paymentStatus(meuPagamento, paymentReference) : null;
   const paymentDay = meuPagamento ? normalizePaymentDay(meuPagamento.dataPagamento) : null;
@@ -121,6 +163,19 @@ export function AdminHomePage() {
           <article className="card" style={{ flex: 1, minWidth: 240 }}>
             <h2 style={{ marginTop: 0 }}>Alunos ativos</h2>
             <p style={{ fontSize: 36, fontWeight: 900, margin: '8px 0' }}>{activeCount}</p>
+            {porTipo.length > 0 ? (
+              <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
+                {porTipo.map((item) => (
+                  <li key={item.id}>
+                    {item.nome}: <strong>{item.total}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted" style={{ margin: '0 0 14px' }}>
+                Nenhum tipo de aula cadastrado.
+              </p>
+            )}
             <Link className="btn btn-secondary" to="/admin/alunos">
               Ver alunos
             </Link>
