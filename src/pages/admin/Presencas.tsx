@@ -6,6 +6,12 @@ import { getStudentCategoryByBirthDate } from '@/lib/studentCategories';
 import type { PresencaAulaDoDia, PresencaDiaAluno } from '@/lib/types';
 
 function alunoMatchesAula(aluno: PresencaDiaAluno, aula: PresencaAulaDoDia): boolean {
+  const tipoId = aula.tipoAula?.id;
+  if (tipoId) {
+    const ids = aluno.tiposAulaIds ?? aluno.tiposAula?.map((tipo) => tipo.id) ?? [];
+    if (!ids.includes(tipoId)) return false;
+  }
+
   if (!aula.categorias?.length) return true;
   const category = getStudentCategoryByBirthDate(aluno.dataNascimento);
   if (!category) return false;
