@@ -154,13 +154,6 @@ export function AdminConfiguracoesPage() {
           <>
             <div className="settings-divider" />
             <SettingsRow
-              to="/admin/configuracoes/vinculos"
-              icon={<IconPeople />}
-              label="Alunos vinculados"
-              subtitle="Ver e escolher o aluno primário"
-            />
-            <div className="settings-divider" />
-            <SettingsRow
               to="/admin/depoimentos"
               icon={<IconChat />}
               label="Deixar depoimento"

@@ -158,9 +158,10 @@ export type VideoUpdate = {
 
 export type EquipeAluno = Pick<
   Aluno,
-  'id' | 'nome' | 'apelido' | 'foto' | 'dataNascimento' | 'faixaAtual' | 'graus'
+  'id' | 'nome' | 'apelido' | 'foto' | 'dataNascimento' | 'faixaAtual' | 'graus' | 'tiposAula'
 > & {
   isMe?: boolean;
+  showFaixa?: boolean;
   dataPagamento?: string | null;
   pagamentoPago?: boolean | null;
   pagamentoReferencia?: string | null;

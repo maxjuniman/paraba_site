@@ -15,6 +15,7 @@ type PublicAluno = {
   foto?: string | null;
   faixaAtual?: string | null;
   graus?: number | null;
+  showFaixa?: boolean;
   isProfessor?: boolean;
 };
 
@@ -113,6 +114,8 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
   const faixa = aluno.faixaAtual?.trim() || 'Sem faixa';
   const graus = normalizeGraus(aluno.graus);
   const color = beltColor(aluno.faixaAtual);
+  // Professores e atletas de jiu-jitsu (showFaixa=true). Zumba e outros: sem faixa.
+  const shouldShowBelt = Boolean(aluno.isProfessor) || aluno.showFaixa === true;
 
   return (
     <article className="group w-[170px] shrink-0 text-center sm:w-[220px]">
@@ -124,26 +127,30 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
           draggable={false}
           className="pointer-events-none h-full w-full object-cover grayscale contrast-110 transition-[filter] duration-300 group-hover:grayscale-0"
         />
-        <div
-          className="absolute right-[-4px] bottom-3 left-[-4px] flex h-3 overflow-hidden border-[1.5px] border-black bg-black"
-          aria-label={`${faixa}, ${graus} grau${graus === 1 ? '' : 's'}`}
-        >
-          <div className="min-w-0 flex-1 self-stretch" style={{ backgroundColor: color }} />
-          <div className="flex min-w-[42px] shrink-0 items-center justify-center gap-[3px] self-stretch bg-black px-1">
-            {Array.from({ length: graus }).map((_, index) => (
-              <span key={index} className="h-full w-[3px] bg-white" />
-            ))}
+        {shouldShowBelt ? (
+          <div
+            className="absolute right-[-4px] bottom-3 left-[-4px] flex h-3 overflow-hidden border-[1.5px] border-black bg-black"
+            aria-label={`${faixa}, ${graus} grau${graus === 1 ? '' : 's'}`}
+          >
+            <div className="min-w-0 flex-1 self-stretch" style={{ backgroundColor: color }} />
+            <div className="flex min-w-[42px] shrink-0 items-center justify-center gap-[3px] self-stretch bg-black px-1">
+              {Array.from({ length: graus }).map((_, index) => (
+                <span key={index} className="h-full w-[3px] bg-white" />
+              ))}
+            </div>
+            <div className="min-w-0 flex-1 self-stretch" style={{ backgroundColor: color }} />
           </div>
-          <div className="min-w-0 flex-1 self-stretch" style={{ backgroundColor: color }} />
-        </div>
+        ) : null}
       </div>
       <p className="mt-3.5 text-lg font-bold leading-tight text-white">{displayNick(aluno)}</p>
       <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9a9a9a]">
         {aluno.nome}
       </p>
-      <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9a9a9a]">
-        {faixa} ({graus})
-      </p>
+      {shouldShowBelt ? (
+        <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9a9a9a]">
+          {faixa} ({graus})
+        </p>
+      ) : null}
     </article>
   );
 }

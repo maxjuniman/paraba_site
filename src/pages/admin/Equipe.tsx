@@ -52,6 +52,18 @@ function normalizeGraus(graus?: number | null): number {
   return Math.max(0, Math.min(4, graus ?? 0));
 }
 
+function praticaJiuJitsu(membro: EquipeAluno): boolean {
+  const tipos = membro.tiposAula ?? [];
+  return tipos.some((tipo) => {
+    const nome = tipo.nome
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+    return /jiu[\s-]?jitsu|jiujitsu|\bbjj\b/.test(nome);
+  });
+}
+
 function displayName(membro: EquipeAluno): string {
   return membro.apelido?.trim() || membro.nome;
 }
@@ -85,6 +97,7 @@ function EquipeMemberCard({
   const category = getStudentCategoryByBirthDate(membro.dataNascimento);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMe = Boolean(membro.isMe);
+  const showBelt = membro.showFaixa === true || praticaJiuJitsu(membro);
 
   return (
     <article className={`equipe-card card${isMe ? ' is-me' : ''}`}>
@@ -98,10 +111,12 @@ function EquipeMemberCard({
         ) : null}
         {birth ? <span className="muted">{birth}</span> : null}
         {category ? <span className="muted">Categoria: {category.label}</span> : null}
-        <span className="equipe-faixa-label">
-          {faixa}
-          {graus > 0 ? ` · ${graus} grau${graus === 1 ? '' : 's'}` : ''}
-        </span>
+        {showBelt ? (
+          <span className="equipe-faixa-label">
+            {faixa}
+            {graus > 0 ? ` · ${graus} grau${graus === 1 ? '' : 's'}` : ''}
+          </span>
+        ) : null}
         {isMe ? (
           <>
             <input
@@ -145,18 +160,20 @@ function EquipeMemberCard({
             event.currentTarget.src = '/sem-foto.png';
           }}
         />
-        <div
-          className="equipe-belt"
-          aria-label={`${faixa}, ${graus} grau${graus === 1 ? '' : 's'}`}
-        >
-          <span className="equipe-belt-end" style={{ backgroundColor: color }} />
-          <span className="equipe-belt-center">
-            {Array.from({ length: graus }).map((_, index) => (
-              <span key={index} className="equipe-degree" />
-            ))}
-          </span>
-          <span className="equipe-belt-end" style={{ backgroundColor: color }} />
-        </div>
+        {showBelt ? (
+          <div
+            className="equipe-belt"
+            aria-label={`${faixa}, ${graus} grau${graus === 1 ? '' : 's'}`}
+          >
+            <span className="equipe-belt-end" style={{ backgroundColor: color }} />
+            <span className="equipe-belt-center">
+              {Array.from({ length: graus }).map((_, index) => (
+                <span key={index} className="equipe-degree" />
+              ))}
+            </span>
+            <span className="equipe-belt-end" style={{ backgroundColor: color }} />
+          </div>
+        ) : null}
         {isMe ? <span className="equipe-photo-badge">✎</span> : null}
       </button>
     </article>
