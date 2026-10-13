@@ -58,7 +58,23 @@ export type Aluno = {
   createdAt?: string;
 };
 
-export type PendingUser = SessionUser & { ativo: boolean };
+export type PendingUser = SessionUser & {
+  ativo: boolean;
+  alunos?: Array<{
+    id: string;
+    nome: string;
+    apelido?: string | null;
+    celular?: string;
+    ativo?: boolean;
+    faixaAtual?: string | null;
+    dataNascimento?: string | null;
+    tiposAulaIds?: string[];
+    tiposAula?: { id: string; nome: string }[];
+    nomeResponsavel?: string | null;
+    emailResponsavel?: string | null;
+  }>;
+  alunosCount?: number;
+};
 
 export type VinculoAlunoResumo = {
   id: string;

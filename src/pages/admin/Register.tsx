@@ -1,11 +1,15 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { apiErrorMessage } from '@/lib/api';
-import { formatPhone, normalizePhoneWithBrazilCode } from '@/lib/formatters';
+import { brDateToIso, formatDate, formatPhone, isValidBrazilMobile, normalizePhoneWithBrazilCode } from '@/lib/formatters';
 import { parabaService } from '@/lib/parabaService';
 import { canAccessAdmin } from '@/lib/session';
+import type { TipoAula } from '@/lib/types';
 import './Login.css';
+
+const FAIXAS = ['Branca', 'Cinza', 'Amarela', 'Laranja', 'Verde', 'Azul', 'Roxa', 'Marrom', 'Preta'];
+const GRAUS = [0, 1, 2, 3, 4];
 
 function IconEye({ open }: { open: boolean }) {
   if (open) {
@@ -30,11 +34,19 @@ function IconEye({ open }: { open: boolean }) {
 export function AdminRegisterPage() {
   const { user, acceptSession } = useAuth();
   const navigate = useNavigate();
+  const [tipos, setTipos] = useState<TipoAula[]>([]);
   const [nome, setNome] = useState('');
+  const [apelido, setApelido] = useState('');
   const [email, setEmail] = useState('');
   const [celular, setCelular] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
+  const [nomeResponsavel, setNomeResponsavel] = useState('');
+  const [emailResponsavel, setEmailResponsavel] = useState('');
+  const [faixaAtual, setFaixaAtual] = useState('');
+  const [graus, setGraus] = useState(0);
+  const [tiposAulaIds, setTiposAulaIds] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -42,14 +54,43 @@ export function AdminRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        setTipos(await parabaService.listarTiposAula());
+      } catch {
+        // Sem tipos o form ainda abre; a API valida no envio.
+      }
+    })();
+  }, []);
+
   if (user && canAccessAdmin(user)) {
     return <Navigate to="/admin" replace />;
   }
+
+  const toggleTipo = (tipoId: string) => {
+    setTiposAulaIds((current) =>
+      current.includes(tipoId) ? current.filter((id) => id !== tipoId) : [...current, tipoId]
+    );
+  };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
 
+    if (!isValidBrazilMobile(celular)) {
+      setError('Informe um celular valido com DDD.');
+      return;
+    }
+    const birthIso = brDateToIso(dataNascimento);
+    if (!birthIso) {
+      setError('Informe a data de nascimento no formato DD/MM/AAAA.');
+      return;
+    }
+    if (tiposAulaIds.length === 0) {
+      setError('Selecione ao menos um tipo de aula.');
+      return;
+    }
     if (senha.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres.');
       return;
@@ -58,19 +99,22 @@ export function AdminRegisterPage() {
       setError('A confirmacao de senha nao confere.');
       return;
     }
-    if (!celular.trim()) {
-      setError('O celular é obrigatorio.');
-      return;
-    }
 
     try {
       setLoading(true);
       const response = await parabaService.cadastrarUsuario({
         nome: nome.trim(),
+        apelido: apelido.trim() || undefined,
         email: email.trim().toLowerCase(),
         celular: normalizePhoneWithBrazilCode(celular),
         senha,
         confirmacao_senha: confirmacao,
+        dataNascimento: birthIso,
+        nomeResponsavel: nomeResponsavel.trim() || undefined,
+        emailResponsavel: emailResponsavel.trim() || undefined,
+        faixaAtual: faixaAtual || undefined,
+        graus,
+        tiposAulaIds,
       });
 
       const sessionUser = response.user ?? response.data;
@@ -100,9 +144,11 @@ export function AdminRegisterPage() {
         <div className="login-brand">
           <img src="/logo.png" alt="Equipe Paraba" />
           <h1>Criar conta</h1>
-          <p className="muted">Cadastro de aluno para acessar o painel.</p>
+          <p className="muted">Cadastro de conta e aluno juntos. O professor só aprova o acesso.</p>
         </div>
         {error ? <div className="error-box">{error}</div> : null}
+
+        <h2 style={{ margin: 0, fontSize: 18 }}>Conta de acesso</h2>
         <div>
           <label className="label" htmlFor="nome">
             Nome
@@ -114,6 +160,17 @@ export function AdminRegisterPage() {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             required
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="apelido">
+            Apelido (opcional)
+          </label>
+          <input
+            id="apelido"
+            className="input"
+            value={apelido}
+            onChange={(e) => setApelido(e.target.value)}
           />
         </div>
         <div>
@@ -192,8 +249,98 @@ export function AdminRegisterPage() {
             </button>
           </div>
         </div>
+
+        <h2 style={{ margin: 0, fontSize: 18 }}>Dados do aluno</h2>
+        <div>
+          <label className="label" htmlFor="nascimento">
+            Data de nascimento
+          </label>
+          <input
+            id="nascimento"
+            className="input"
+            placeholder="DD/MM/AAAA"
+            value={dataNascimento}
+            onChange={(e) => setDataNascimento(formatDate(e.target.value))}
+            required
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="responsavel">
+            Nome do responsável (opcional)
+          </label>
+          <input
+            id="responsavel"
+            className="input"
+            value={nomeResponsavel}
+            onChange={(e) => setNomeResponsavel(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="emailResponsavel">
+            E-mail do responsável (opcional)
+          </label>
+          <input
+            id="emailResponsavel"
+            className="input"
+            type="email"
+            value={emailResponsavel}
+            onChange={(e) => setEmailResponsavel(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">Tipo de aula</label>
+          {tipos.length === 0 ? (
+            <p className="muted" style={{ margin: 0 }}>
+              Nenhum tipo cadastrado. Fale com o professor.
+            </p>
+          ) : (
+            <div className="row">
+              {tipos.map((tipo) => (
+                <button
+                  key={tipo.id}
+                  type="button"
+                  className={`chip ${tiposAulaIds.includes(tipo.id) ? 'active' : ''}`}
+                  onClick={() => toggleTipo(tipo.id)}
+                >
+                  {tipo.nome}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="label">Faixa atual (opcional)</label>
+          <div className="row">
+            {FAIXAS.map((faixa) => (
+              <button
+                key={faixa}
+                type="button"
+                className={`chip ${faixaAtual === faixa ? 'active' : ''}`}
+                onClick={() => setFaixaAtual((current) => (current === faixa ? '' : faixa))}
+              >
+                {faixa}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="label">Graus</label>
+          <div className="row">
+            {GRAUS.map((grau) => (
+              <button
+                key={grau}
+                type="button"
+                className={`chip ${graus === grau ? 'active' : ''}`}
+                onClick={() => setGraus(grau)}
+              >
+                {grau}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? 'Criando...' : 'Criar conta'}
+          {loading ? 'Enviando...' : 'Enviar cadastro'}
         </button>
         <Link className="btn btn-ghost" to="/admin/login">
           Já tenho conta

@@ -61,6 +61,14 @@ export const parabaService = {
     celular: string;
     senha: string;
     confirmacao_senha: string;
+    apelido?: string;
+    nomeResponsavel?: string;
+    emailResponsavel?: string;
+    dataNascimento: string;
+    dataPagamento?: string;
+    faixaAtual?: string;
+    graus?: number;
+    tiposAulaIds: string[];
   }): Promise<{ message?: string; user?: SessionUser; data?: SessionUser; accessToken?: string }> {
     const { data } = await api.post<{ message?: string; user?: SessionUser; data?: SessionUser; accessToken?: string }>(
       '/auth/register',
@@ -118,7 +126,7 @@ export const parabaService = {
 
   async autorizarUsuario(
     userId: string,
-    body: { aluno_id: string } | { aluno: AlunoBody }
+    body: { aluno_id: string } | { aluno: AlunoBody } | Record<string, never> = {}
   ): Promise<{ user: SessionUser; aluno: Aluno }> {
     const { data } = await api.post<{ data?: { user: SessionUser; aluno: Aluno } } | { user: SessionUser; aluno: Aluno }>(
       `/users/${userId}/autorizar`,
@@ -174,10 +182,19 @@ export const parabaService = {
     alunoId: string;
     pago: boolean;
     referencia: string;
+    dataPagamento?: string;
   }): Promise<Aluno> {
     const { data } = await api.patch<{ data?: Aluno } | Aluno>(`/alunos/${body.alunoId}/pagamento-status`, {
       pago: body.pago,
       referencia: body.referencia,
+      ...(body.dataPagamento ? { data_pagamento: body.dataPagamento } : {}),
+    });
+    return unwrapData<Aluno>(data);
+  },
+
+  async atualizarDataPagamento(body: { alunoId: string; dataPagamento: string }): Promise<Aluno> {
+    const { data } = await api.patch<{ data?: Aluno } | Aluno>(`/alunos/${body.alunoId}/pagamento`, {
+      data_pagamento: body.dataPagamento,
     });
     return unwrapData<Aluno>(data);
   },

@@ -13,6 +13,15 @@ import type { Aluno } from '@/lib/types';
 
 type StatusFilter = 'todos' | PaymentStatus;
 
+function normalizePaymentDay(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 2);
+}
+
+function isValidPaymentDay(value: string): boolean {
+  const day = Number(value);
+  return Number.isInteger(day) && day >= 1 && day <= 31;
+}
+
 export function AdminPagamentosPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +30,7 @@ export function AdminPagamentosPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [dayDrafts, setDayDrafts] = useState<Record<string, string>>({});
 
   const reference =
     viewMode === 'lastUnpaid' ? previousPaymentReference() : currentPaymentReference();
@@ -61,17 +71,70 @@ export function AdminPagamentosPage() {
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [alunos, reference, search, statusFilter, viewMode]);
 
+  const dayValueFor = (aluno: Aluno) =>
+    dayDrafts[aluno.id] ?? normalizePaymentDay(String(aluno.dataPagamento ?? ''));
+
+  const applyUpdatedAluno = (updated: Aluno) => {
+    setAlunos((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setDayDrafts((prev) => {
+      const next = { ...prev };
+      delete next[updated.id];
+      return next;
+    });
+  };
+
   const togglePago = async (aluno: Aluno) => {
     const status = paymentStatus(aluno, reference);
     const paid = status === 'pago';
+    const dataPagamento = dayValueFor(aluno).trim();
+
+    if (!paid) {
+      if (!dataPagamento) {
+        setError('Informe o dia de pagamento (1 a 31) antes de marcar como pago.');
+        return;
+      }
+      if (!isValidPaymentDay(dataPagamento)) {
+        setError('Informe o dia de pagamento entre 1 e 31.');
+        return;
+      }
+    }
+
     try {
+      setError('');
       setBusyId(aluno.id);
       const updated = await parabaService.atualizarStatusPagamento({
         alunoId: aluno.id,
         pago: !paid,
         referencia: reference,
+        ...(!paid && dataPagamento ? { dataPagamento } : {}),
       });
-      setAlunos((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      applyUpdatedAluno(updated);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const savePaymentDay = async (aluno: Aluno) => {
+    const dataPagamento = dayValueFor(aluno).trim();
+    const current = normalizePaymentDay(String(aluno.dataPagamento ?? ''));
+    if (dataPagamento === current) return;
+
+    if (!dataPagamento || !isValidPaymentDay(dataPagamento)) {
+      setError('Informe o dia de pagamento entre 1 e 31.');
+      setDayDrafts((prev) => ({ ...prev, [aluno.id]: current }));
+      return;
+    }
+
+    try {
+      setError('');
+      setBusyId(aluno.id);
+      const updated = await parabaService.atualizarDataPagamento({
+        alunoId: aluno.id,
+        dataPagamento,
+      });
+      applyUpdatedAluno(updated);
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -143,13 +206,31 @@ export function AdminPagamentosPage() {
             <tbody>
               {visible.map((aluno) => {
                 const status = paymentStatus(aluno, reference);
+                const dayValue = dayValueFor(aluno);
                 return (
                   <tr key={aluno.id}>
                     <td>
                       <strong>{aluno.nome}</strong>
                       {aluno.apelido ? <div className="muted">{aluno.apelido}</div> : null}
                     </td>
-                    <td>{aluno.dataPagamento ? `Dia ${aluno.dataPagamento}` : '—'}</td>
+                    <td style={{ width: 120 }}>
+                      <input
+                        className="input"
+                        inputMode="numeric"
+                        placeholder="Dia"
+                        aria-label={`Dia de pagamento de ${aluno.nome}`}
+                        value={dayValue}
+                        disabled={busyId === aluno.id}
+                        onChange={(e) =>
+                          setDayDrafts((prev) => ({
+                            ...prev,
+                            [aluno.id]: normalizePaymentDay(e.target.value),
+                          }))
+                        }
+                        onBlur={() => void savePaymentDay(aluno)}
+                        style={{ maxWidth: 88, minHeight: 40, padding: '8px 10px' }}
+                      />
+                    </td>
                     <td>{paymentStatusLabel(status)}</td>
                     <td>
                       <button

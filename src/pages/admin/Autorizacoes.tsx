@@ -1,45 +1,26 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiErrorMessage } from '@/lib/api';
-import { brDateToIso, formatDate, formatPhone, isValidBrazilMobile } from '@/lib/formatters';
 import { parabaService } from '@/lib/parabaService';
-import type { Aluno, PendingUser, TipoAula } from '@/lib/types';
+import type { PendingUser } from '@/lib/types';
 
-const MAX_ALUNOS = 2;
-
-const emptyNewAluno = {
-  nome: '',
-  apelido: '',
-  nomeResponsavel: '',
-  emailResponsavel: '',
-  celular: '',
-  dataNascimento: '',
-  dataPagamento: '',
-  tiposAulaIds: [] as string[],
-};
+function formatBirth(value?: string | null): string {
+  if (!value) return '—';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
 
 export function AdminAutorizacoesPage() {
   const [pending, setPending] = useState<PendingUser[]>([]);
-  const [alunos, setAlunos] = useState<Aluno[]>([]);
-  const [tipos, setTipos] = useState<TipoAula[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedAlunoIds, setSelectedAlunoIds] = useState<string[]>([]);
-  const [showNew, setShowNew] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [newAluno, setNewAluno] = useState(emptyNewAluno);
 
   const load = async () => {
     try {
       setLoading(true);
-      const [users, list, tiposAula] = await Promise.all([
-        parabaService.listarUsuariosPendentes(),
-        parabaService.listarAlunos(),
-        parabaService.listarTiposAula(),
-      ]);
-      setPending(users);
-      setAlunos(list);
-      setTipos(tiposAula);
+      setError('');
+      setPending(await parabaService.listarUsuariosPendentes());
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -51,95 +32,22 @@ export function AdminAutorizacoesPage() {
     void load();
   }, []);
 
-  const semVinculo = useMemo(
-    () =>
-      alunos
-        .filter((aluno) => !aluno.userId && aluno.ativo !== false)
-        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    [alunos]
-  );
-
-  const toggleAluno = (alunoId: string) => {
-    setSelectedAlunoIds((current) => {
-      if (current.includes(alunoId)) {
-        return current.filter((id) => id !== alunoId);
-      }
-      if (current.length >= MAX_ALUNOS) {
-        return current;
-      }
-      return [...current, alunoId];
-    });
-  };
-
-  const toggleTipo = (tipoId: string) => {
-    setNewAluno((previous) => ({
-      ...previous,
-      tiposAulaIds: previous.tiposAulaIds.includes(tipoId)
-        ? previous.tiposAulaIds.filter((item) => item !== tipoId)
-        : [...previous.tiposAulaIds, tipoId],
-    }));
-  };
-
-  const authorizeExisting = async () => {
-    if (!selectedUserId || selectedAlunoIds.length === 0) {
-      setError('Selecione o cadastro pendente e 1 ou 2 alunos.');
+  const approve = async (user: PendingUser) => {
+    if (!user.alunos?.length) {
+      setError('Este cadastro antigo nao tem aluno vinculado. Oriente a pessoa a se cadastrar de novo.');
       return;
     }
+
     try {
-      setSaving(true);
+      setSavingId(user.id);
       setError('');
-      for (const alunoId of selectedAlunoIds) {
-        await parabaService.autorizarUsuario(selectedUserId, { aluno_id: alunoId });
-      }
-      setSelectedUserId('');
-      setSelectedAlunoIds([]);
-      await load();
+      await parabaService.autorizarUsuario(user.id);
+      setPending((previous) => previous.filter((item) => item.id !== user.id));
     } catch (err) {
       setError(apiErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const authorizeNew = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!selectedUserId) {
-      setError('Selecione um usuario pendente.');
-      return;
-    }
-    const dataNascimento = brDateToIso(newAluno.dataNascimento);
-    if (!newAluno.nome.trim() || !dataNascimento || !isValidBrazilMobile(newAluno.celular)) {
-      setError('Preencha nome, celular com DDD e nascimento.');
-      return;
-    }
-    if (newAluno.tiposAulaIds.length === 0) {
-      setError('Selecione ao menos um tipo de aula.');
-      return;
-    }
-    try {
-      setSaving(true);
-      setError('');
-      await parabaService.autorizarUsuario(selectedUserId, {
-        aluno: {
-          nome: newAluno.nome.trim(),
-          apelido: newAluno.apelido.trim() || undefined,
-          nomeResponsavel: newAluno.nomeResponsavel.trim() || undefined,
-          emailResponsavel: newAluno.emailResponsavel.trim() || undefined,
-          celular: newAluno.celular.trim(),
-          dataNascimento,
-          dataPagamento: newAluno.dataPagamento.replace(/\D/g, '').slice(0, 2) || undefined,
-          tiposAulaIds: newAluno.tiposAulaIds,
-        },
-      });
-      setShowNew(false);
-      setSelectedUserId('');
-      setSelectedAlunoIds([]);
-      setNewAluno(emptyNewAluno);
       await load();
-    } catch (err) {
-      setError(apiErrorMessage(err));
     } finally {
-      setSaving(false);
+      setSavingId(null);
     }
   };
 
@@ -148,7 +56,7 @@ export function AdminAutorizacoesPage() {
       <header className="admin-header">
         <div>
           <h1>Autorizações</h1>
-          <p>Vincule cadastros pendentes do app a até 2 alunos.</p>
+          <p>Cadastros enviados pelo app. Revise e aprove para liberar o acesso.</p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={() => void load()}>
           Atualizar
@@ -157,127 +65,66 @@ export function AdminAutorizacoesPage() {
 
       {error ? <div className="error-box">{error}</div> : null}
       {loading ? <p className="muted">Carregando...</p> : null}
+      {!loading && pending.length === 0 ? <p className="empty">Nenhum cadastro pendente.</p> : null}
 
-      <div className="card stack">
-        <h2 style={{ margin: 0 }}>Cadastro pendente</h2>
-        {pending.length === 0 ? <p className="muted">Nenhum usuario pendente.</p> : null}
-        <div className="row">
-          {pending.map((user) => (
-            <button
-              key={user.id}
-              type="button"
-              className={`chip ${selectedUserId === user.id ? 'active' : ''}`}
-              onClick={() => setSelectedUserId(user.id)}
-            >
-              {user.nome} · {user.email}
-            </button>
-          ))}
-        </div>
-      </div>
+      {pending.map((user) => {
+        const aluno = user.alunos?.[0];
+        const tipos = aluno?.tiposAula?.map((tipo) => tipo.nome).join(', ') || '—';
+        const saving = savingId === user.id;
 
-      <div className="card stack">
-        <h2 style={{ margin: 0 }}>Alunos sem vínculo</h2>
-        <p className="muted" style={{ margin: 0 }}>
-          Clique em 1 ou 2 alunos ({selectedAlunoIds.length}/{MAX_ALUNOS} selecionados).
-        </p>
-        <div className="row">
-          {semVinculo.map((aluno) => {
-            const selected = selectedAlunoIds.includes(aluno.id);
-            const blocked = !selected && selectedAlunoIds.length >= MAX_ALUNOS;
-            return (
-              <button
-                key={aluno.id}
-                type="button"
-                className={`chip ${selected ? 'active' : ''}`}
-                disabled={blocked}
-                onClick={() => toggleAluno(aluno.id)}
-                style={blocked ? { opacity: 0.45 } : undefined}
-              >
-                {aluno.apelido ? `${aluno.nome} (${aluno.apelido})` : aluno.nome}
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={saving || !selectedUserId || selectedAlunoIds.length === 0}
-          onClick={() => void authorizeExisting()}
-        >
-          {saving
-            ? 'Autorizando...'
-            : selectedAlunoIds.length > 1
-              ? `Autorizar vínculo (${selectedAlunoIds.length} alunos)`
-              : 'Autorizar vínculo'}
-        </button>
-      </div>
-
-      <button type="button" className="btn btn-ghost" onClick={() => setShowNew((v) => !v)}>
-        {showNew ? 'Ocultar novo aluno' : 'Não achou o aluno? Cadastrar agora'}
-      </button>
-
-      {showNew ? (
-        <form className="card stack" onSubmit={authorizeNew}>
-          <h2 style={{ margin: 0 }}>Novo aluno + autorização</h2>
-          <input
-            className="input"
-            placeholder="Nome"
-            value={newAluno.nome}
-            onChange={(e) => setNewAluno((p) => ({ ...p, nome: e.target.value }))}
-            required
-          />
-          <input
-            className="input"
-            placeholder="Apelido (opcional)"
-            value={newAluno.apelido}
-            onChange={(e) => setNewAluno((p) => ({ ...p, apelido: e.target.value }))}
-          />
-          <input
-            className="input"
-            placeholder="Nome do responsavel (opcional)"
-            value={newAluno.nomeResponsavel}
-            onChange={(e) => setNewAluno((p) => ({ ...p, nomeResponsavel: e.target.value }))}
-          />
-          <input
-            className="input"
-            placeholder="Celular com DDD"
-            value={newAluno.celular}
-            onChange={(e) => setNewAluno((p) => ({ ...p, celular: formatPhone(e.target.value) }))}
-            required
-          />
-          <input
-            className="input"
-            placeholder="Nascimento DD/MM/AAAA"
-            value={newAluno.dataNascimento}
-            onChange={(e) => setNewAluno((p) => ({ ...p, dataNascimento: formatDate(e.target.value) }))}
-            required
-          />
-          <div>
-            <label className="label">Tipo de aula</label>
-            {tipos.length === 0 ? (
-              <p className="muted" style={{ margin: 0 }}>
-                Nenhum tipo cadastrado. Crie um tipo em Calendário.
+        return (
+          <article key={user.id} className="card stack">
+            <div>
+              <p className="muted" style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: 0.6 }}>
+                CADASTRO PENDENTE
               </p>
-            ) : (
-              <div className="row">
-                {tipos.map((tipo) => (
-                  <button
-                    key={tipo.id}
-                    type="button"
-                    className={`chip ${newAluno.tiposAulaIds.includes(tipo.id) ? 'active' : ''}`}
-                    onClick={() => toggleTipo(tipo.id)}
-                  >
-                    {tipo.nome}
-                  </button>
-                ))}
+              <h2 style={{ margin: '4px 0 0' }}>{user.nome}</h2>
+              <p className="muted" style={{ margin: '4px 0 0' }}>
+                {user.email}
+                {user.celular ? ` · ${user.celular}` : ''}
+              </p>
+            </div>
+
+            {aluno ? (
+              <div className="stack" style={{ gap: 4 }}>
+                <strong>Aluno</strong>
+                <p style={{ margin: 0 }}>
+                  {aluno.apelido ? `${aluno.nome} (${aluno.apelido})` : aluno.nome}
+                </p>
+                <p className="muted" style={{ margin: 0 }}>
+                  Nascimento: {formatBirth(aluno.dataNascimento)}
+                </p>
+                <p className="muted" style={{ margin: 0 }}>
+                  Tipos: {tipos}
+                </p>
+                {aluno.faixaAtual ? (
+                  <p className="muted" style={{ margin: 0 }}>
+                    Faixa: {aluno.faixaAtual}
+                  </p>
+                ) : null}
+                {aluno.nomeResponsavel ? (
+                  <p className="muted" style={{ margin: 0 }}>
+                    Responsável: {aluno.nomeResponsavel}
+                  </p>
+                ) : null}
               </div>
+            ) : (
+              <p className="error-box" style={{ margin: 0 }}>
+                Cadastro antigo sem aluno. Oriente a pessoa a se cadastrar novamente.
+              </p>
             )}
-          </div>
-          <button className="btn btn-primary" type="submit" disabled={saving || !selectedUserId}>
-            Cadastrar e autorizar
-          </button>
-        </form>
-      ) : null}
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={saving || !aluno || Boolean(savingId)}
+              onClick={() => void approve(user)}
+            >
+              {saving ? 'Aprovando...' : 'Aprovar cadastro'}
+            </button>
+          </article>
+        );
+      })}
     </div>
   );
 }
