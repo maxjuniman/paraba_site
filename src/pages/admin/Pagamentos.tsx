@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiErrorMessage } from '@/lib/api';
 import {
   currentPaymentReference,
@@ -30,7 +30,9 @@ export function AdminPagamentosPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [dayDrafts, setDayDrafts] = useState<Record<string, string>>({});
+  const [modalAluno, setModalAluno] = useState<Aluno | null>(null);
+  const [modalDay, setModalDay] = useState('');
+  const [modalError, setModalError] = useState('');
 
   const reference =
     viewMode === 'lastUnpaid' ? previousPaymentReference() : currentPaymentReference();
@@ -71,44 +73,30 @@ export function AdminPagamentosPage() {
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [alunos, reference, search, statusFilter, viewMode]);
 
-  const dayValueFor = (aluno: Aluno) =>
-    dayDrafts[aluno.id] ?? normalizePaymentDay(String(aluno.dataPagamento ?? ''));
-
-  const applyUpdatedAluno = (updated: Aluno) => {
-    setAlunos((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    setDayDrafts((prev) => {
-      const next = { ...prev };
-      delete next[updated.id];
-      return next;
-    });
+  const closeModal = () => {
+    if (busyId) return;
+    setModalAluno(null);
+    setModalDay('');
+    setModalError('');
   };
 
-  const togglePago = async (aluno: Aluno) => {
-    const status = paymentStatus(aluno, reference);
-    const paid = status === 'pago';
-    const dataPagamento = dayValueFor(aluno).trim();
+  const openMarkPaidModal = (aluno: Aluno) => {
+    setError('');
+    setModalError('');
+    setModalAluno(aluno);
+    setModalDay(normalizePaymentDay(String(aluno.dataPagamento ?? '')));
+  };
 
-    if (!paid) {
-      if (!dataPagamento) {
-        setError('Informe o dia de pagamento (1 a 31) antes de marcar como pago.');
-        return;
-      }
-      if (!isValidPaymentDay(dataPagamento)) {
-        setError('Informe o dia de pagamento entre 1 e 31.');
-        return;
-      }
-    }
-
+  const unmarkPaid = async (aluno: Aluno) => {
     try {
       setError('');
       setBusyId(aluno.id);
       const updated = await parabaService.atualizarStatusPagamento({
         alunoId: aluno.id,
-        pago: !paid,
+        pago: false,
         referencia: reference,
-        ...(!paid && dataPagamento ? { dataPagamento } : {}),
       });
-      applyUpdatedAluno(updated);
+      setAlunos((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -116,27 +104,31 @@ export function AdminPagamentosPage() {
     }
   };
 
-  const savePaymentDay = async (aluno: Aluno) => {
-    const dataPagamento = dayValueFor(aluno).trim();
-    const current = normalizePaymentDay(String(aluno.dataPagamento ?? ''));
-    if (dataPagamento === current) return;
+  const confirmMarkPaid = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!modalAluno) return;
 
+    const dataPagamento = modalDay.trim();
     if (!dataPagamento || !isValidPaymentDay(dataPagamento)) {
-      setError('Informe o dia de pagamento entre 1 e 31.');
-      setDayDrafts((prev) => ({ ...prev, [aluno.id]: current }));
+      setModalError('Informe o dia em que foi pago (1 a 31).');
       return;
     }
 
     try {
+      setModalError('');
       setError('');
-      setBusyId(aluno.id);
-      const updated = await parabaService.atualizarDataPagamento({
-        alunoId: aluno.id,
+      setBusyId(modalAluno.id);
+      const updated = await parabaService.atualizarStatusPagamento({
+        alunoId: modalAluno.id,
+        pago: true,
+        referencia: reference,
         dataPagamento,
       });
-      applyUpdatedAluno(updated);
+      setAlunos((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setModalAluno(null);
+      setModalDay('');
     } catch (err) {
-      setError(apiErrorMessage(err));
+      setModalError(apiErrorMessage(err));
     } finally {
       setBusyId(null);
     }
@@ -206,38 +198,26 @@ export function AdminPagamentosPage() {
             <tbody>
               {visible.map((aluno) => {
                 const status = paymentStatus(aluno, reference);
-                const dayValue = dayValueFor(aluno);
                 return (
                   <tr key={aluno.id}>
                     <td>
                       <strong>{aluno.nome}</strong>
                       {aluno.apelido ? <div className="muted">{aluno.apelido}</div> : null}
                     </td>
-                    <td style={{ width: 120 }}>
-                      <input
-                        className="input"
-                        inputMode="numeric"
-                        placeholder="Dia"
-                        aria-label={`Dia de pagamento de ${aluno.nome}`}
-                        value={dayValue}
-                        disabled={busyId === aluno.id}
-                        onChange={(e) =>
-                          setDayDrafts((prev) => ({
-                            ...prev,
-                            [aluno.id]: normalizePaymentDay(e.target.value),
-                          }))
-                        }
-                        onBlur={() => void savePaymentDay(aluno)}
-                        style={{ maxWidth: 88, minHeight: 40, padding: '8px 10px' }}
-                      />
-                    </td>
+                    <td>{aluno.dataPagamento ? `Dia ${aluno.dataPagamento}` : '—'}</td>
                     <td>{paymentStatusLabel(status)}</td>
                     <td>
                       <button
                         type="button"
                         className={`btn ${status === 'pago' ? 'btn-secondary' : 'btn-primary'}`}
                         disabled={busyId === aluno.id}
-                        onClick={() => void togglePago(aluno)}
+                        onClick={() => {
+                          if (status === 'pago') {
+                            void unmarkPaid(aluno);
+                            return;
+                          }
+                          openMarkPaidModal(aluno);
+                        }}
                       >
                         {status === 'pago' ? 'Desmarcar pago' : 'Marcar pago'}
                       </button>
@@ -249,6 +229,60 @@ export function AdminPagamentosPage() {
           </table>
         ) : null}
       </div>
+
+      {modalAluno ? (
+        <div className="confirm-overlay" role="presentation" onClick={closeModal}>
+          <form
+            className="confirm-dialog card stack"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-day-title"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => void confirmMarkPaid(event)}
+          >
+            <img src="/logo.png" alt="Equipe Paraba" className="confirm-logo" />
+            <h2 id="payment-day-title" style={{ margin: 0, textAlign: 'center' }}>
+              Marcar pagamento
+            </h2>
+            <p className="muted" style={{ margin: 0, textAlign: 'center', lineHeight: 1.45 }}>
+              Em que dia do mês <strong>{modalAluno.nome}</strong> pagou?
+            </p>
+            {modalError ? <div className="error-box">{modalError}</div> : null}
+            <div>
+              <label className="label" htmlFor="payment-day">
+                Dia (1 a 31)
+              </label>
+              <input
+                id="payment-day"
+                className="input"
+                inputMode="numeric"
+                autoFocus
+                placeholder="Ex: 10"
+                value={modalDay}
+                disabled={busyId === modalAluno.id}
+                onChange={(e) => setModalDay(normalizePaymentDay(e.target.value))}
+              />
+            </div>
+            <div className="row" style={{ justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={busyId === modalAluno.id}
+                onClick={closeModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={busyId === modalAluno.id}
+              >
+                {busyId === modalAluno.id ? 'Salvando...' : 'Confirmar pagamento'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
