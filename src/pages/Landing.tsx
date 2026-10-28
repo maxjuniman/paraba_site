@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 
 const PORTFOLIO_URL = 'https://max-juniman.vercel.app/';
 const NAV_LINKS = [
+  { href: '#horarios', label: 'Horários' },
+  { href: '#aula-experimental', label: 'Aula experimental' },
   { href: '#equipe', label: 'Equipe' },
   { href: '#depoimentos', label: 'Depoimentos' },
   { href: '#contato', label: 'Contato' },
@@ -28,13 +30,30 @@ type PublicDepoimento = {
   ordem?: number;
 };
 
-const WHATSAPP_NUMBER = '51993112125';
-const WHATSAPP_URL = `https://wa.me/55${WHATSAPP_NUMBER}`;
+const WHATSAPP_NUMBER = '51985598950';
+const DEFAULT_WHATSAPP_MESSAGE = 'Ola! Quero marcar uma aula experimental.';
 const INSTAGRAM_URL = 'https://www.instagram.com/ctequipeparaba/';
-const ADDRESS = 'Rua Dr. Antônio Mazzaferro Neto, 662';
+const ADDRESS = 'R. Dr. Antonio Mazzaferro Neto, 662 - Chapéu Do Sol, Porto Alegre - RS, 91787-196';
 const MAPS_QUERY = encodeURIComponent(ADDRESS);
 const MAPS_EMBED_URL = `https://maps.google.com/maps?q=${MAPS_QUERY}&z=16&output=embed`;
 const MAPS_LINK_URL = `https://www.google.com/maps/search/?api=1&query=${MAPS_QUERY}`;
+const SCHEDULES = [
+  { turma: 'Kids', horario: '18:30', dias: 'Segundas, quartas e sextas' },
+  { turma: 'Juvenil', horario: '19:30', dias: 'Segundas, quartas e sextas' },
+  { turma: 'Adulto', horario: '20:30', dias: 'Segundas, quartas e sextas' },
+] as const;
+const PLAN_OPTIONS = [
+  'Mensalidade recorrente',
+  'Plano família',
+  'Desconto para irmãos',
+  'Primeira aula experimental gratuita',
+] as const;
+
+function buildWhatsAppUrl(message = DEFAULT_WHATSAPP_MESSAGE): string {
+  return `https://wa.me/55${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
+const WHATSAPP_URL = buildWhatsAppUrl();
 
 function IconWhatsApp({ className = 'h-4 w-4' }: { className?: string }) {
   return (
@@ -144,7 +163,7 @@ function FighterCard({ aluno }: { aluno: PublicAluno }) {
       </div>
       <p className="mt-3.5 text-lg font-bold leading-tight text-white">{displayNick(aluno)}</p>
       <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9a9a9a]">
-        {aluno.nome}
+        {aluno.isProfessor ? 'Professor' : 'Atleta da equipe'}
       </p>
       {shouldShowBelt ? (
         <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#9a9a9a]">
@@ -327,6 +346,27 @@ export function LandingPage() {
 
   const year = useMemo(() => new Date().getFullYear(), []);
 
+  const submitExperimental = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const nome = String(formData.get('nome') || '').trim();
+    const whatsapp = String(formData.get('whatsapp') || '').trim();
+    const idade = String(formData.get('idade') || '').trim();
+    const turma = String(formData.get('turma') || '').trim();
+    const message = [
+      'Ola! Quero marcar uma aula experimental.',
+      nome ? `Nome: ${nome}` : '',
+      whatsapp ? `WhatsApp: ${whatsapp}` : '',
+      idade ? `Idade do aluno: ${idade}` : '',
+      turma ? `Turma de interesse: ${turma}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    window.open(buildWhatsAppUrl(message), '_blank', 'noopener,noreferrer');
+    event.currentTarget.reset();
+  };
+
   return (
     <div
       className={`min-h-screen bg-paper font-sans text-ink ${loaded ? 'landing-ready' : ''}`}
@@ -340,7 +380,7 @@ export function LandingPage() {
           aria-hidden="true"
         >
           <img
-            className="hero-mark-enter absolute w-[min(72vw,720px)] mix-blend-soft-light grayscale contrast-105 max-md:top-[16%] max-md:left-1/2 max-md:w-[min(82vw,360px)] max-md:-translate-x-1/2 max-md:opacity-55 max-md:mix-blend-normal max-md:grayscale-0 max-md:contrast-100 md:-right-[8%] md:-bottom-[18%] max-md:right-auto max-md:bottom-auto"
+            className="hero-mark-enter absolute w-[min(72vw,720px)] mix-blend-soft-light grayscale contrast-105 max-md:top-[15%] max-md:left-1/2 max-md:w-[min(58vw,240px)] max-md:-translate-x-1/2 max-md:opacity-25 max-md:mix-blend-normal max-md:grayscale-0 max-md:contrast-100 md:-right-[8%] md:-bottom-[18%] max-md:right-auto max-md:bottom-auto"
             src="/logo.png"
             alt=""
           />
@@ -363,12 +403,6 @@ export function LandingPage() {
                 {link.label}
               </a>
             ))}
-            <a
-              href="/admin/login"
-              className="inline-flex min-h-10 items-center rounded-[10px] border border-cream/35 px-4 text-sm font-extrabold text-cream transition hover:bg-cream/10"
-            >
-              Admin
-            </a>
           </nav>
 
           <button
@@ -423,44 +457,124 @@ export function LandingPage() {
                 <IconWhatsApp className="h-4 w-4" />
                 WhatsApp
               </a>
-              <a
-                href="/admin/login"
-                className="inline-flex min-h-11 items-center justify-center rounded-[10px] border border-cream/35 px-4 text-sm font-extrabold text-cream"
-                onClick={() => setMenuOpen(false)}
-              >
-                Admin
-              </a>
             </nav>
           </div>
         ) : null}
 
-        <div className="hero-enter-delay relative z-1 mx-auto mt-8 w-[min(1120px,calc(100%-40px))] max-w-[720px] pb-10 max-md:mt-[min(48vh,420px)] max-md:pb-12 sm:pb-14 md:mt-0 lg:ml-[max(20px,calc((100%-1120px)/2))] lg:mr-auto">
+        <div className="hero-enter-delay relative z-1 mx-auto mt-14 w-[min(1120px,calc(100%-40px))] max-w-[720px] pb-10 max-md:mt-12 max-md:pb-12 sm:pb-14 md:mt-0 lg:ml-[max(20px,calc((100%-1120px)/2))] lg:mr-auto">
           <p className="mb-2.5 font-display text-[clamp(40px,10vw,92px)] leading-[0.9] tracking-[0.03em] max-md:mb-2">
             Equipe Paraba
           </p>
-          <h1 className="m-0 max-w-[16ch] text-[clamp(22px,4.4vw,40px)] font-bold leading-[1.15] text-[#f0ebe3]">
-            Jiu-Jitsu com disciplina, respeito e evolução.
+          <h1 className="m-0 max-w-[18ch] text-[clamp(22px,4.4vw,40px)] font-bold leading-[1.15] text-[#f0ebe3]">
+            Jiu-Jitsu para kids, juvenil e adulto com aula experimental gratuita.
           </h1>
           <p className="mt-3 max-w-[34ch] text-[16px] leading-normal text-hero-lead md:mt-4 md:text-[17px]">
-            Treinos para kids, juvenil e adulto, uma equipe, um material e um propósito.
+            Treinos às segundas, quartas e sextas. Kids 18:30, juvenil 19:30 e adulto 20:30.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3 md:mt-7">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap md:mt-7">
             <a
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-[22px] font-extrabold text-[#062410] transition hover:-translate-y-px hover:bg-[#2fe075] sm:flex-none"
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noreferrer"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-[22px] font-extrabold text-[#062410] transition hover:-translate-y-px hover:bg-[#2fe075] sm:flex-none"
+              href="#aula-experimental"
             >
               <IconWhatsApp className="h-5 w-5" />
-              Falar no WhatsApp
+              Marcar aula experimental
             </a>
             <a
-              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[10px] border border-cream/35 px-[22px] font-extrabold text-cream transition hover:bg-cream/10 sm:flex-none"
-              href="#equipe"
+              className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-cream/35 px-[22px] font-extrabold text-cream transition hover:bg-cream/10 sm:flex-none"
+              href="#horarios"
             >
-              Conhecer a equipe
+              Ver horários
             </a>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-[#0d1116] py-18 text-cream sm:py-22" id="horarios" aria-label="Horários de treino">
+        <div className="mx-auto w-[min(1120px,calc(100%-40px))]">
+          <div className="max-w-[680px]">
+            <p className="mb-2.5 text-xs font-bold tracking-[0.22em] text-[#b8b2a8] uppercase">Horários</p>
+            <h2 className="m-0 font-display text-[clamp(36px,6vw,56px)] leading-[0.95] tracking-[0.03em]">
+              Treinos às segundas, quartas e sextas
+            </h2>
+            <p className="mt-3.5 text-[17px] leading-normal text-hero-lead">
+              Escolha a turma e venha fazer uma aula experimental gratuita no tatame.
+            </p>
+          </div>
+
+          <div className="mt-9 grid gap-4 md:grid-cols-3">
+            {SCHEDULES.map((item) => (
+              <article key={item.turma} className="border border-white/12 bg-white/[0.04] p-6">
+                <p className="m-0 text-xs font-extrabold tracking-[0.22em] text-[#c45c26] uppercase">{item.turma}</p>
+                <strong className="mt-3 block text-[clamp(36px,7vw,54px)] leading-none text-white">{item.horario}</strong>
+                <p className="mt-3 mb-0 text-sm font-semibold text-hero-lead">{item.dias}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="bg-paper py-18 text-ink sm:py-22"
+        id="aula-experimental"
+        aria-label="Aula experimental gratuita"
+      >
+        <div className="mx-auto grid w-[min(1120px,calc(100%-40px))] gap-10 lg:grid-cols-[1fr_420px] lg:items-start">
+          <div>
+            <p className="mb-2.5 text-xs font-bold tracking-[0.22em] text-muted uppercase">Aula experimental</p>
+            <h2 className="m-0 font-display text-[clamp(36px,6vw,56px)] leading-[0.95] tracking-[0.03em]">
+              Marque sua primeira aula gratuita
+            </h2>
+            <p className="mt-3.5 max-w-[48ch] text-[17px] leading-normal text-muted">
+              Preencha os dados e nós abrimos o WhatsApp com a mensagem pronta. Você só revisa e envia.
+            </p>
+
+            <div className="mt-8 border border-ink/10 bg-white p-6 shadow-[0_18px_50px_rgba(16,20,24,0.08)]">
+              <h3 className="m-0 text-xl font-extrabold">Planos e condições</h3>
+              <p className="mt-2 mb-0 text-muted">
+                Valores e condições são informados pelo WhatsApp, conforme turma e frequência.
+              </p>
+              <ul className="mt-5 grid gap-3 p-0 sm:grid-cols-2">
+                {PLAN_OPTIONS.map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-sm font-bold text-ink">
+                    <span className="h-2 w-2 rounded-full bg-[#c45c26]" aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <form className="grid gap-3 border border-ink/10 bg-white p-5 shadow-[0_18px_50px_rgba(16,20,24,0.08)]" onSubmit={submitExperimental}>
+            <label className="grid gap-1 text-sm font-extrabold">
+              Nome
+              <input name="nome" className="min-h-12 border border-ink/15 px-3 font-medium" placeholder="Seu nome" required />
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold">
+              WhatsApp
+              <input name="whatsapp" className="min-h-12 border border-ink/15 px-3 font-medium" placeholder="(51) 99999-9999" inputMode="tel" required />
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold">
+              Idade do aluno
+              <input name="idade" className="min-h-12 border border-ink/15 px-3 font-medium" placeholder="Ex.: 12" inputMode="numeric" />
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold">
+              Turma de interesse
+              <select name="turma" className="min-h-12 border border-ink/15 bg-white px-3 font-medium" defaultValue="" required>
+                <option value="" disabled>
+                  Selecione
+                </option>
+                {SCHEDULES.map((item) => (
+                  <option key={item.turma} value={`${item.turma} - ${item.horario}`}>
+                    {item.turma} - {item.horario}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-[#25d366] px-5 font-extrabold text-[#062410] transition hover:-translate-y-px hover:bg-[#2fe075]">
+              <IconWhatsApp className="h-5 w-5" />
+              Abrir WhatsApp
+            </button>
+          </form>
         </div>
       </section>
 
@@ -506,6 +620,9 @@ export function LandingPage() {
             </h2>
             <p className="mt-3.5 max-w-[36ch] text-[17px] leading-normal text-hero-lead">
               Tire dúvidas, agende uma aula experimental ou peça informações pelo WhatsApp.
+            </p>
+            <p className="mt-4 max-w-[42ch] text-sm font-semibold leading-relaxed text-hero-lead">
+              Horários: kids 18:30, juvenil 19:30 e adulto 20:30, sempre às segundas, quartas e sextas.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a
@@ -553,6 +670,17 @@ export function LandingPage() {
         </div>
       </section>
 
+      <a
+        href={WHATSAPP_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="fixed right-4 bottom-4 z-40 inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#25d366] px-5 font-extrabold text-[#062410] shadow-[0_14px_35px_rgba(0,0,0,0.28)] transition hover:-translate-y-px hover:bg-[#2fe075] md:right-6 md:bottom-6"
+        aria-label="Marcar aula experimental pelo WhatsApp"
+      >
+        <IconWhatsApp className="h-5 w-5" />
+        <span className="hidden sm:inline">Aula experimental</span>
+      </a>
+
       {/* <section className="mx-auto w-[min(720px,calc(100%-40px))] py-18 text-center sm:py-22">
         <h2 className="m-0 font-display text-[clamp(36px,6vw,56px)] tracking-[0.03em]">Treine com a gente</h2>
         <p className="mx-auto mt-3 mb-6 max-w-[36ch] leading-normal text-muted">
@@ -583,6 +711,12 @@ export function LandingPage() {
       <footer className="border-t border-white/10 bg-[#0d1116] px-5 pt-[22px] pb-7 text-[13px] text-[#9a9a9a]">
         <div className="mx-auto flex w-[min(1120px,calc(100%-0px))] flex-wrap items-center justify-center gap-x-3 gap-y-2">
           <span>© {year} Equipe Paraba</span>
+          <span aria-hidden="true" className="text-white/25">
+            ·
+          </span>
+          <a href="/admin/login" className="font-extrabold text-cream transition hover:text-accent">
+            Área do aluno
+          </a>
           <span aria-hidden="true" className="text-white/25">
             ·
           </span>
